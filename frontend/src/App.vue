@@ -283,6 +283,21 @@ footer {
     display: flex;
   }
 
+  /* Right-align theme toggle and menu button on mobile */
+  .nav-inner {
+    justify-content: space-between;
+  }
+
+  .theme-toggle {
+    margin-left: auto;
+  }
+
+  /* Ensure close button stays above overlay */
+  .mobile-menu-btn {
+    position: relative;
+    z-index: 10000;
+  }
+
   footer > div {
     flex-direction: column;
     gap: 8px;
