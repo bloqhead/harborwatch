@@ -584,6 +584,8 @@ h3 { font-size: 1.1rem; font-weight: 700; }
   display: flex;
   gap: 4px;
   margin-bottom: 0;
+  border-bottom: 1px solid var(--navy-border);
+  padding-bottom: 0;
 }
 
 .year-tab {
@@ -732,6 +734,8 @@ h3 { font-size: 1.1rem; font-weight: 700; }
     overflow-x: auto;
     scrollbar-width: none;
     -ms-overflow-style: none;
+    padding-right: 12px;
+    margin-right: -12px;
   }
 
   .year-tabs::-webkit-scrollbar {
