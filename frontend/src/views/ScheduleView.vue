@@ -14,12 +14,23 @@
           <button class="btn btn-ghost" style="font-size:0.72rem;" @click="jumpToToday">Today</button>
           <button class="btn btn-ghost" style="font-size:0.72rem;" @click="jumpToWeek">This Week</button>
         </div>
-        <!-- Year tabs -->
-        <div class="year-tabs">
+
+        <!-- Desktop: Year tabs -->
+        <div class="year-tabs desktop-only">
           <button v-for="y in years" :key="y"
             class="year-tab" :class="{ active: filters.year === String(y) }"
             @click="setYear(String(y))">{{ y }}</button>
           <button class="year-tab" :class="{ active: filters.year === '' }" @click="setYear('')">All</button>
+        </div>
+
+        <!-- Mobile: Year dropdown -->
+        <div class="year-select-mobile mobile-only">
+          <label style="font-family:var(--font-mono); font-size:0.7rem; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.08em; margin-right:6px;">Year:</label>
+          <select v-model="filters.year" @change="resetAndSearch()"
+            style="background:var(--surface-2); border:1px solid var(--navy-border); border-radius:var(--radius-sm); color:var(--text-primary); font-family:var(--font-mono); font-size:0.85rem; padding:6px 10px; cursor:pointer;">
+            <option value="">All Years</option>
+            <option v-for="y in years" :key="y" :value="String(y)">{{ y }}</option>
+          </select>
         </div>
       </div>
     </div>

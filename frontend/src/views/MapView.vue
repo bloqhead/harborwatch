@@ -1,19 +1,31 @@
 <template>
   <div>
     <!-- Header -->
-    <div style="display:flex; align-items:flex-end; justify-content:space-between; margin-bottom:20px;">
+    <div style="display:flex; align-items:flex-end; justify-content:space-between; margin-bottom:20px; gap:12px;">
       <div>
         <h1 style="margin-bottom:4px;">Port Map</h1>
         <p style="color:var(--text-muted); font-family:var(--font-mono); font-size:0.78rem; letter-spacing:0.06em;">
           CLICK A PORT TO SEE ITS SCHEDULE
         </p>
       </div>
-      <div class="year-tabs">
+
+      <!-- Desktop: Tabs -->
+      <div class="year-tabs desktop-only">
         <button v-for="y in years" :key="y"
           class="year-tab" :class="{ active: selectedYear === String(y) }"
           @click="selectedYear = String(y); loadPortStats()">{{ y }}</button>
         <button class="year-tab" :class="{ active: selectedYear === '' }"
           @click="selectedYear = ''; loadPortStats()">All</button>
+      </div>
+
+      <!-- Mobile: Dropdown -->
+      <div class="year-select-mobile mobile-only">
+        <label style="font-family:var(--font-mono); font-size:0.7rem; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.08em; margin-right:6px;">Year:</label>
+        <select v-model="selectedYear" @change="loadPortStats()"
+          style="background:var(--surface-2); border:1px solid var(--navy-border); border-radius:var(--radius-sm); color:var(--text-primary); font-family:var(--font-mono); font-size:0.85rem; padding:6px 10px; cursor:pointer;">
+          <option value="">All Years</option>
+          <option v-for="y in years" :key="y" :value="String(y)">{{ y }}</option>
+        </select>
       </div>
     </div>
 
@@ -318,6 +330,8 @@ onUnmounted(() => {
   grid-template-columns: 1fr 340px;
   gap: 20px;
   align-items: start;
+  position: relative;
+  z-index: 1;
 }
 
 .map-legend {
@@ -328,6 +342,8 @@ onUnmounted(() => {
   backdrop-filter: blur(8px);
   box-shadow: var(--shadow-deep);
   transition: background-color 0.3s ease, border-color 0.3s ease;
+  position: relative;
+  z-index: 400;
 }
 
 @media (max-width: 968px) {

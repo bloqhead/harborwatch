@@ -709,7 +709,30 @@ h3 { font-size: 1.1rem; font-weight: 700; }
    MOBILE RESPONSIVE STYLES
    ============================================================ */
 
+/* Desktop/Mobile visibility helpers */
+.desktop-only {
+  display: flex;
+}
+
+.mobile-only {
+  display: none;
+}
+
+.year-select-mobile {
+  display: none;
+  align-items: center;
+}
+
 @media (max-width: 768px) {
+  /* Desktop/Mobile visibility */
+  .desktop-only {
+    display: none !important;
+  }
+
+  .mobile-only {
+    display: flex !important;
+  }
+
   /* Container padding */
   #app {
     padding: 16px 12px;
