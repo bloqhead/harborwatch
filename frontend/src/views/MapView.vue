@@ -1,10 +1,10 @@
 <template>
   <div>
     <!-- Header -->
-    <div style="display:flex; align-items:flex-end; justify-content:space-between; margin-bottom:20px; gap:12px;">
+    <div class="flex-align-end flex-justify-between mb-20 gap-12">
       <div>
-        <h1 style="margin-bottom:4px;">Port Map</h1>
-        <p style="color:var(--text-muted); font-family:var(--font-mono); font-size:0.78rem; letter-spacing:0.06em;">
+        <h1 class="mb-4">Port Map</h1>
+        <p class="font-mono text-md text-muted letter-spacing-sm">
           CLICK A PORT TO SEE ITS SCHEDULE
         </p>
       </div>
@@ -20,9 +20,8 @@
 
       <!-- Mobile: Dropdown -->
       <div class="year-select-mobile mobile-only">
-        <label style="font-family:var(--font-mono); font-size:0.7rem; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.08em; margin-right:6px;">Year:</label>
-        <select v-model="selectedYear" @change="loadPortStats()"
-          style="background:var(--surface-2); border:1px solid var(--navy-border); border-radius:var(--radius-sm); color:var(--text-primary); font-family:var(--font-mono); font-size:0.85rem; padding:6px 10px; cursor:pointer;">
+        <label class="mono-muted-label mr-6">Year:</label>
+        <select v-model="selectedYear" @change="loadPortStats()" class="select-style">
           <option value="">All Years</option>
           <option v-for="y in years" :key="y" :value="String(y)">{{ y }}</option>
         </select>
@@ -32,29 +31,30 @@
     <div class="map-layout">
 
       <!-- Map container -->
-      <div class="card" style="padding:0; overflow:hidden; position:relative;">
+      <div class="card p-0 overflow-hidden relative">
         <div ref="mapEl" style="height:580px; width:100%; border-radius:var(--radius-md);" />
 
         <!-- Legend -->
-        <div class="map-legend" style="position:absolute; bottom:16px; left:16px; z-index:1000;">
-          <div style="font-family:var(--font-mono); font-size:0.65rem; letter-spacing:0.1em; text-transform:uppercase; color:var(--text-muted); margin-bottom:8px;">Regions</div>
+        <div class="map-legend absolute" style="bottom:16px; left:16px; z-index:1000;">
+          <div class="mono-heading mb-8">Regions</div>
           <div v-for="(color, region) in REGION_COLORS" :key="region"
-            style="display:flex; align-items:center; gap:8px; margin-bottom:5px; font-family:var(--font-mono); font-size:0.72rem; color:var(--text-secondary); cursor:pointer;"
+            class="flex-align-center gap-8 cursor-pointer font-mono text-sm text-secondary"
+            style="margin-bottom:5px;"
             @click="filterRegion(region)">
             <div :style="{ width:'10px', height:'10px', borderRadius:'50%', background:color, boxShadow:`0 0 6px ${color}` }" />
             {{ regionLabel(region) }}
           </div>
-          <div style="display:flex; align-items:center; gap:8px; margin-top:8px; padding-top:8px; border-top:1px solid var(--navy-border); font-family:var(--font-mono); font-size:0.65rem; color:var(--text-muted); cursor:pointer;" @click="clearRegionFilter">
+          <div class="flex-align-center gap-8 mt-8 pt-8 border-top mono-muted-xs cursor-pointer" @click="clearRegionFilter">
             ✕ Show all
           </div>
         </div>
 
         <!-- Bubble size legend -->
-        <div class="map-legend" style="position:absolute; bottom:16px; right:16px; z-index:1000;">
-          <div style="font-family:var(--font-mono); font-size:0.65rem; letter-spacing:0.1em; text-transform:uppercase; color:var(--text-muted); margin-bottom:8px;">Circle = call volume</div>
-          <div v-for="lv in sizeLegend" :key="lv.label" style="display:flex; align-items:center; gap:8px; margin-bottom:5px;">
+        <div class="map-legend absolute" style="bottom:16px; right:16px; z-index:1000;">
+          <div class="mono-heading mb-8">Circle = call volume</div>
+          <div v-for="lv in sizeLegend" :key="lv.label" class="flex-align-center gap-8" style="margin-bottom:5px;">
             <div :style="{ width: lv.r*2+'px', height: lv.r*2+'px', borderRadius:'50%', background:'rgba(200,168,75,0.3)', border:'1px solid var(--gold)', flexShrink:0 }" />
-            <span style="font-family:var(--font-mono); font-size:0.68rem; color:var(--text-secondary);">{{ lv.label }}</span>
+            <span class="font-mono text-muted" style="font-size:0.68rem;">{{ lv.label }}</span>
           </div>
         </div>
       </div>

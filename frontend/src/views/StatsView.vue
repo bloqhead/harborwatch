@@ -1,9 +1,9 @@
 <template>
   <div>
-    <div style="display:flex; align-items:flex-end; justify-content:space-between; margin-bottom:24px; flex-wrap:wrap; gap:12px;">
+    <div class="flex-align-end flex-justify-between mb-24 flex-wrap gap-12">
       <div>
-        <h1 style="margin-bottom:4px;">Statistics</h1>
-        <p style="color:var(--text-muted); font-family:var(--font-mono); font-size:0.75rem; letter-spacing:0.06em;">
+        <h1 class="mb-4">Statistics</h1>
+        <p class="text-muted font-mono text-base letter-spacing-sm">
           PORT CALL ANALYTICS &amp; ACTIVITY SUMMARY
         </p>
       </div>
@@ -18,16 +18,15 @@
 
       <!-- Mobile: Dropdown -->
       <div class="year-select-mobile mobile-only">
-        <label style="font-family:var(--font-mono); font-size:0.7rem; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.08em; margin-right:6px;">Year:</label>
-        <select v-model="selectedYear"
-          style="background:var(--surface-2); border:1px solid var(--navy-border); border-radius:var(--radius-sm); color:var(--text-primary); font-family:var(--font-mono); font-size:0.85rem; padding:6px 10px; cursor:pointer;">
+        <label class="mono-muted-label mr-6">Year:</label>
+        <select v-model="selectedYear" class="select-style">
           <option value="">All Years</option>
           <option v-for="y in years" :key="y" :value="String(y)">{{ y }}</option>
         </select>
       </div>
     </div>
 
-    <div v-if="api.loading.value" class="loading-bar" style="margin-bottom:16px;" />
+    <div v-if="api.loading.value" class="loading-bar mb-16" />
 
     <template v-if="stats">
       <!-- Top stat cards -->

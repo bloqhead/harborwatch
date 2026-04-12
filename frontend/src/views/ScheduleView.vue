@@ -1,18 +1,18 @@
 <template>
   <div>
     <!-- Header row -->
-    <div style="display:flex; align-items:flex-end; justify-content:space-between; margin-bottom:20px; gap:16px; flex-wrap:wrap;">
+    <div class="flex-align-end flex-justify-between mb-20 gap-16 flex-wrap">
       <div>
-        <h1 style="margin-bottom:4px;">Port Schedule</h1>
-        <p style="color:var(--text-muted); font-family:var(--font-mono); font-size:0.75rem; letter-spacing:0.06em;">
+        <h1 class="mb-4">Port Schedule</h1>
+        <p class="text-muted font-mono text-base letter-spacing-sm">
           ALASKA CRUISE LINE AGENCIES — SHIP ARRIVALS &amp; DEPARTURES
         </p>
       </div>
-      <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+      <div class="flex-align-center gap-12 flex-wrap">
         <!-- Quick date buttons -->
-        <div style="display:flex; gap:4px;">
-          <button class="btn btn-ghost" style="font-size:0.72rem;" @click="jumpToToday">Today</button>
-          <button class="btn btn-ghost" style="font-size:0.72rem;" @click="jumpToWeek">This Week</button>
+        <div class="flex gap-4">
+          <button class="btn btn-ghost text-sm" @click="jumpToToday">Today</button>
+          <button class="btn btn-ghost text-sm" @click="jumpToWeek">This Week</button>
         </div>
 
         <!-- Desktop: Year tabs -->
@@ -25,9 +25,8 @@
 
         <!-- Mobile: Year dropdown -->
         <div class="year-select-mobile mobile-only">
-          <label style="font-family:var(--font-mono); font-size:0.7rem; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.08em; margin-right:6px;">Year:</label>
-          <select v-model="filters.year" @change="resetAndSearch()"
-            style="background:var(--surface-2); border:1px solid var(--navy-border); border-radius:var(--radius-sm); color:var(--text-primary); font-family:var(--font-mono); font-size:0.85rem; padding:6px 10px; cursor:pointer;">
+          <label class="mono-muted-label mr-6">Year:</label>
+          <select v-model="filters.year" @change="resetAndSearch()" class="select-style">
             <option value="">All Years</option>
             <option v-for="y in years" :key="y" :value="String(y)">{{ y }}</option>
           </select>
@@ -36,7 +35,7 @@
     </div>
 
     <!-- Filters card -->
-    <div class="card filters-card" style="margin-bottom:16px;">
+    <div class="card filters-card mb-16">
       <button class="mobile-filter-toggle" @click="filtersExpanded = !filtersExpanded">
         <span>{{ filtersExpanded ? '▼' : '▶' }} Filters</span>
         <span v-if="activeChips.length" class="filter-count">{{ activeChips.length }}</span>
