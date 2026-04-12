@@ -11,7 +11,8 @@
           <span>Harborwatch</span>
         </router-link>
 
-        <div class="nav-links">
+        <!-- Desktop navigation -->
+        <div class="nav-links desktop-nav">
           <router-link to="/" class="nav-link" :class="{ active: $route.path === '/' }">
             <span class="nav-icon">☰</span> Schedule
           </router-link>
@@ -28,12 +29,39 @@
           <span v-else>🌙</span>
         </button>
 
-        <div class="nav-source">
+        <!-- Mobile menu button -->
+        <button class="mobile-menu-btn" @click="mobileMenuOpen = !mobileMenuOpen" :aria-label="mobileMenuOpen ? 'Close menu' : 'Open menu'">
+          <span v-if="!mobileMenuOpen">☰</span>
+          <span v-else>✕</span>
+        </button>
+
+        <div class="nav-source desktop-nav">
           <a href="https://claalaska.com" target="_blank" rel="noopener" class="source-link">
             SOURCE: CLAALASKA.COM ↗
           </a>
         </div>
       </div>
+
+      <!-- Mobile menu overlay -->
+      <transition name="mobile-menu">
+        <div v-if="mobileMenuOpen" class="mobile-menu-overlay" @click="mobileMenuOpen = false">
+          <div class="mobile-menu" @click.stop>
+            <router-link to="/" class="mobile-menu-link" :class="{ active: $route.path === '/' }" @click="mobileMenuOpen = false">
+              <span class="nav-icon">☰</span> Schedule
+            </router-link>
+            <router-link to="/map" class="mobile-menu-link" :class="{ active: $route.path === '/map' }" @click="mobileMenuOpen = false">
+              <span class="nav-icon">🗺</span> Map
+            </router-link>
+            <router-link to="/stats" class="mobile-menu-link" :class="{ active: $route.path === '/stats' }" @click="mobileMenuOpen = false">
+              <span class="nav-icon">📊</span> Stats
+            </router-link>
+            <div class="mobile-menu-divider"></div>
+            <a href="https://claalaska.com" target="_blank" rel="noopener" class="mobile-menu-link source">
+              SOURCE: CLAALASKA.COM ↗
+            </a>
+          </div>
+        </div>
+      </transition>
     </nav>
 
     <main style="flex:1; padding:28px 0;">
@@ -60,9 +88,18 @@
 </template>
 
 <script setup lang="ts">
+import { ref, watch } from 'vue';
+import { useRoute } from 'vue-router';
 import { useThemeStore } from './stores/theme';
 
 const themeStore = useThemeStore();
+const mobileMenuOpen = ref(false);
+const route = useRoute();
+
+// Close mobile menu when route changes
+watch(() => route.path, () => {
+  mobileMenuOpen.value = false;
+});
 </script>
 
 <style>
@@ -118,47 +155,132 @@ footer {
 
 .nav-icon { font-size:0.9em; }
 
+/* Mobile menu button */
+.mobile-menu-btn {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--navy-border);
+  background: var(--surface-2);
+  color: var(--text-primary);
+  cursor: pointer;
+  font-size: 1.3rem;
+  transition: all 0.2s;
+  margin-left: 8px;
+}
+
+.mobile-menu-btn:hover {
+  background: var(--surface-3);
+  border-color: var(--gold-dim);
+}
+
+/* Mobile menu overlay */
+.mobile-menu-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(5, 13, 26, 0.85);
+  backdrop-filter: blur(4px);
+  z-index: 9999;
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-end;
+  padding-top: 60px;
+}
+
+.mobile-menu {
+  background: var(--surface-1);
+  border: 1px solid var(--navy-border);
+  border-radius: var(--radius-md);
+  margin: 0 12px;
+  min-width: 280px;
+  max-width: 90%;
+  box-shadow: var(--shadow-deep);
+  overflow: hidden;
+}
+
+.mobile-menu-link {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 20px;
+  color: var(--text-secondary);
+  text-decoration: none;
+  font-family: var(--font-mono);
+  font-size: 0.9rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  border-bottom: 1px solid var(--navy-border);
+  transition: all 0.2s;
+}
+
+.mobile-menu-link:last-child {
+  border-bottom: none;
+}
+
+.mobile-menu-link:hover {
+  background: var(--surface-2);
+  color: var(--gold);
+}
+
+.mobile-menu-link.active {
+  background: var(--gold-glow);
+  color: var(--gold-bright);
+  border-left: 3px solid var(--gold);
+}
+
+.mobile-menu-link.source {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  opacity: 0.8;
+  padding: 12px 20px;
+}
+
+.mobile-menu-divider {
+  height: 1px;
+  background: var(--navy-border);
+  margin: 8px 0;
+}
+
+/* Mobile menu transitions */
+.mobile-menu-enter-active,
+.mobile-menu-leave-active {
+  transition: opacity 0.25s ease;
+}
+
+.mobile-menu-enter-active .mobile-menu,
+.mobile-menu-leave-active .mobile-menu {
+  transition: transform 0.25s ease;
+}
+
+.mobile-menu-enter-from,
+.mobile-menu-leave-to {
+  opacity: 0;
+}
+
+.mobile-menu-enter-from .mobile-menu {
+  transform: translateX(100%);
+}
+
+.mobile-menu-leave-to .mobile-menu {
+  transform: translateX(100%);
+}
+
 /* Mobile navigation */
 @media (max-width: 768px) {
-  .nav-inner {
-    flex-wrap: wrap;
-    gap: 12px;
+  /* Hide desktop nav items */
+  .desktop-nav {
+    display: none !important;
   }
 
-  .nav-brand {
-    order: 1;
-  }
-
-  .theme-toggle {
-    order: 2;
-    margin-left: auto;
-  }
-
-  .nav-links {
-    order: 3;
-    width: 100%;
-    flex-direction: row;
-    justify-content: space-around;
-  }
-
-  .nav-link {
-    flex: 1;
-    justify-content: center;
-    font-size: 0.75rem;
-    padding: 8px 6px;
-  }
-
-  .nav-source {
-    order: 4;
-    width: 100%;
-    text-align: center;
-    margin: 0;
-    padding-top: 8px;
-    border-top: 1px solid var(--navy-border);
-  }
-
-  .source-link {
-    font-size: 0.6rem;
+  /* Show mobile menu button */
+  .mobile-menu-btn {
+    display: flex;
   }
 
   footer > div {
@@ -169,17 +291,6 @@ footer {
 
   footer span {
     font-size: 0.6rem !important;
-  }
-}
-
-@media (max-width: 480px) {
-  .nav-link {
-    font-size: 0.7rem;
-    padding: 6px 4px;
-  }
-
-  .nav-icon {
-    font-size: 1rem;
   }
 }
 </style>
