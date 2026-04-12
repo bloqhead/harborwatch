@@ -1,7 +1,7 @@
 // src/stores/api.ts
 import { ref } from "vue";
 
-const API_BASE = (import.meta.env.VITE_API_BASE ?? "") + "/api";
+const API_BASE = (import.meta.env.VITE_API_BASE || "https://harborwatch-api.onrender.com") + "/api";
 
 export interface PortCall {
   id: number;
@@ -94,6 +94,11 @@ export function useApi() {
     return fetchJson<Stats>(`/stats${qs}`);
   }
 
+  async function getPortDetail(portCode: string, year?: number | string): Promise<{ totalCalls: number; uniqueShips: number; topShips: { name: string; calls: number }[] } | null> {
+    const qs = year ? `?year=${year}` : "";
+    return fetchJson(`/port/${portCode}${qs}`);
+  }
+
   async function importRecords(records: unknown[], apiKey?: string): Promise<{ inserted: number; skipped: number } | null> {
     loading.value = true;
     error.value = null;
@@ -116,5 +121,5 @@ export function useApi() {
     }
   }
 
-  return { loading, error, getYears, getPorts, getShips, getSchedule, getStats, importRecords };
+  return { loading, error, getYears, getPorts, getShips, getSchedule, getStats, getPortDetail, importRecords };
 }

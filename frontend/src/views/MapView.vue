@@ -124,8 +124,10 @@ import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { PORT_GEO, REGION_COLORS, type PortGeo } from "../data/ports";
 import { useThemeStore } from "../stores/theme";
+import { useApi } from "../stores/api";
 
 const themeStore = useThemeStore();
+const api = useApi();
 const mapEl = ref<HTMLElement | null>(null);
 let map: L.Map | null = null;
 let markers: L.CircleMarker[] = [];
@@ -220,8 +222,7 @@ async function selectPort(port: PortGeo) {
   map?.panTo([port.lat, port.lng], { animate: true, duration: 0.5 });
   renderMarkers();
 
-  const qs = selectedYear.value ? `?year=${selectedYear.value}` : "";
-  const data = await fetch(`/api/port/${port.code}${qs}`).then(r => r.json()).catch(() => null);
+  const data = await api.getPortDetail(port.code, selectedYear.value || undefined);
   if (data) {
     portDetail.value = {
       totalCalls: data.totalCalls,
@@ -232,8 +233,7 @@ async function selectPort(port: PortGeo) {
 }
 
 async function loadPortStats() {
-  const qs = selectedYear.value ? `?year=${selectedYear.value}` : "";
-  const resp = await fetch(`/api/stats${qs}`).then(r => r.json()).catch(() => null);
+  const resp = await api.getStats(selectedYear.value || undefined);
   if (!resp) return;
 
   const counts: Record<string, number> = {};
@@ -291,8 +291,8 @@ watch(() => themeStore.theme, () => {
 });
 
 onMounted(async () => {
-  const yr = await fetch("/api/years").then(r => r.json()).catch(() => ({ years: [] }));
-  years.value = yr.years ?? [];
+  const yr = await api.getYears();
+  years.value = yr ?? [];
   if (years.value.length > 0) selectedYear.value = String(years.value[0]);
 
   // Init map after DOM is ready
