@@ -28,6 +28,7 @@ try {
 
 // ── Year page URLs ──────────────────────────────────────────────────────────
 const YEAR_PAGES = {
+  2025: "https://claalaska.com/?page_id=665",
   2026: "https://claalaska.com/?page_id=1551",
   2027: "https://claalaska.com/?page_id=1250",
 };
