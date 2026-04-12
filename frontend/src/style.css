@@ -702,3 +702,160 @@ h3 { font-size: 1.1rem; font-weight: 700; }
 /* ---- Transition ---- */
 .fade-enter-active, .fade-leave-active { transition: opacity 0.2s; }
 .fade-enter-from, .fade-leave-to { opacity: 0; }
+
+/* ============================================================
+   MOBILE RESPONSIVE STYLES
+   ============================================================ */
+
+@media (max-width: 768px) {
+  /* Container padding */
+  #app {
+    padding: 16px 12px;
+  }
+
+  /* Typography scaling */
+  h1 {
+    font-size: 1.6rem;
+  }
+
+  h2 {
+    font-size: 1.2rem;
+  }
+
+  /* Cards */
+  .card {
+    padding: 14px;
+  }
+
+  /* Year tabs - make scrollable */
+  .year-tabs {
+    overflow-x: auto;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  .year-tabs::-webkit-scrollbar {
+    display: none;
+  }
+
+  .year-tab {
+    flex-shrink: 0;
+  }
+
+  /* Filters bar */
+  .filters-bar {
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .filters-bar .filter-group {
+    width: 100%;
+  }
+
+  /* Tables - enable horizontal scroll */
+  .data-table-wrapper {
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .data-table {
+    font-size: 0.75rem;
+  }
+
+  .data-table th,
+  .data-table td {
+    padding: 8px 10px;
+  }
+
+  .data-table th {
+    font-size: 0.65rem;
+  }
+
+  /* Pagination */
+  .pagination {
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: center;
+  }
+
+  .page-btn {
+    min-width: 36px;
+    padding: 6px 10px;
+    font-size: 0.7rem;
+  }
+
+  /* Stats grid */
+  .stats-grid-2,
+  .stats-grid-3 {
+    grid-template-columns: 1fr !important;
+    gap: 12px;
+  }
+
+  /* Month bars */
+  .month-bars {
+    height: 100px;
+    gap: 4px;
+  }
+
+  .month-lbl,
+  .month-val {
+    font-size: 0.55rem;
+  }
+
+  /* Day view */
+  .day-card {
+    padding: 12px;
+  }
+
+  .ship-entry {
+    padding: 10px;
+    gap: 8px;
+  }
+
+  /* Buttons */
+  .btn {
+    padding: 7px 14px;
+    font-size: 0.75rem;
+  }
+
+  /* Header flex wrapping */
+  div[style*="justify-content:space-between"] {
+    flex-direction: column;
+    align-items: flex-start !important;
+    gap: 12px;
+  }
+
+  /* Badge sizing */
+  .badge {
+    font-size: 0.68rem;
+    padding: 2px 7px;
+  }
+}
+
+@media (max-width: 480px) {
+  /* Even smaller screens */
+  #app {
+    padding: 12px 8px;
+  }
+
+  h1 {
+    font-size: 1.4rem;
+  }
+
+  .card {
+    padding: 12px;
+  }
+
+  .btn {
+    padding: 6px 12px;
+    font-size: 0.7rem;
+  }
+
+  .data-table {
+    font-size: 0.7rem;
+  }
+
+  .data-table th,
+  .data-table td {
+    padding: 6px 8px;
+  }
+}

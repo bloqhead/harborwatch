@@ -25,8 +25,12 @@
     </div>
 
     <!-- Filters card -->
-    <div class="card" style="margin-bottom:16px;">
-      <div class="filters-bar">
+    <div class="card filters-card" style="margin-bottom:16px;">
+      <button class="mobile-filter-toggle" @click="filtersExpanded = !filtersExpanded">
+        <span>{{ filtersExpanded ? '▼' : '▶' }} Filters</span>
+        <span v-if="activeChips.length" class="filter-count">{{ activeChips.length }}</span>
+      </button>
+      <div class="filters-bar" :class="{ expanded: filtersExpanded }">
         <div class="filter-group">
           <label>Port</label>
           <select v-model="filters.port" @change="resetAndSearch">
@@ -238,6 +242,7 @@ const viewMode = ref<"table" | "day">("table");
 const currentPage = ref(1);
 const pageSize = ref(parseInt(localStorage.getItem("harborwatch-page-size") || "100"));
 const selectedMonth = ref<number | "">("");
+const filtersExpanded = ref(false);
 
 const filters = ref({
   year: "", port: "", ship: "", date_from: "", date_to: "", berth: "",
@@ -483,5 +488,74 @@ watch(pageSize, (newSize) => {
 .pagination select option {
   background: var(--surface-2);
   color: var(--text-primary);
+}
+
+/* Mobile collapsible filters */
+.mobile-filter-toggle {
+  display: none;
+  width: 100%;
+  padding: 12px 16px;
+  background: var(--surface-2);
+  border: none;
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  text-align: left;
+  cursor: pointer;
+  margin-bottom: 12px;
+  transition: background 0.2s;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.mobile-filter-toggle:hover {
+  background: var(--surface-3);
+}
+
+.filter-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  background: var(--gold-glow);
+  border: 1px solid var(--gold-dim);
+  border-radius: 10px;
+  color: var(--gold);
+  font-size: 0.7rem;
+  font-weight: 600;
+}
+
+@media (max-width: 768px) {
+  .mobile-filter-toggle {
+    display: flex;
+  }
+
+  .filters-bar {
+    display: none;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .filters-bar.expanded {
+    display: flex;
+  }
+
+  .filters-bar .filter-group {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: none !important;
+  }
+
+  .filters-bar > div:last-child {
+    flex-direction: row;
+    width: 100%;
+  }
+
+  .filters-bar > div:last-child button {
+    flex: 1;
+  }
 }
 </style>

@@ -17,7 +17,7 @@
       </div>
     </div>
 
-    <div style="display:grid; grid-template-columns:1fr 340px; gap:20px; align-items:start;">
+    <div class="map-layout">
 
       <!-- Map container -->
       <div class="card" style="padding:0; overflow:hidden; position:relative;">
@@ -313,6 +313,13 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
+.map-layout {
+  display: grid;
+  grid-template-columns: 1fr 340px;
+  gap: 20px;
+  align-items: start;
+}
+
 .map-legend {
   background: var(--surface-1);
   border: 1px solid var(--navy-border);
@@ -321,6 +328,18 @@ onUnmounted(() => {
   backdrop-filter: blur(8px);
   box-shadow: var(--shadow-deep);
   transition: background-color 0.3s ease, border-color 0.3s ease;
+}
+
+@media (max-width: 968px) {
+  .map-layout {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .map-legend {
+    font-size: 0.7rem;
+    padding: 8px 10px;
+  }
 }
 
 /* Override Leaflet popup/tooltip styles to match theme */
