@@ -72,9 +72,9 @@
       </div>
 
       <!-- Active filter chips -->
-      <div v-if="activeChips.length" style="display:flex; gap:6px; flex-wrap:wrap; margin-top:12px; padding-top:10px; border-top:1px solid var(--navy-border);">
+      <div v-if="activeChips.length" class="flex gap-6 flex-wrap mt-12 pt-10 border-top">
         <span v-for="chip in activeChips" :key="chip.key"
-          style="display:inline-flex; align-items:center; gap:5px; padding:2px 10px; border-radius:2px; background:var(--gold-glow); border:1px solid var(--gold-dim); font-family:var(--font-mono); font-size:0.7rem; color:var(--gold); cursor:pointer;"
+          class="filter-chip"
           @click="clearChip(chip.key)">
           {{ chip.label }} <span style="opacity:0.6;">✕</span>
         </span>
@@ -82,15 +82,15 @@
     </div>
 
     <!-- View mode + results bar -->
-    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; gap:12px;">
-      <div style="display:flex; gap:4px;">
-        <button class="btn" style="font-size:0.75rem;" :class="viewMode==='table'?'btn-primary':'btn-ghost'" @click="viewMode='table'">☰ Table</button>
-        <button class="btn" style="font-size:0.75rem;" :class="viewMode==='day'?'btn-primary':'btn-ghost'" @click="viewMode='day'">📅 By Day</button>
+    <div class="view-mode-bar">
+      <div class="flex gap-4">
+        <button class="btn text-base" :class="viewMode==='table'?'btn-primary':'btn-ghost'" @click="viewMode='table'">☰ Table</button>
+        <button class="btn text-base" :class="viewMode==='day'?'btn-primary':'btn-ghost'" @click="viewMode='day'">📅 By Day</button>
       </div>
-      <span style="font-family:var(--font-mono); font-size:0.75rem; color:var(--text-muted);">
+      <span class="font-mono text-base text-muted results-text">
         <template v-if="schedule && !api.loading.value">
           {{ schedule.pagination.total.toLocaleString() }} result{{ schedule.pagination.total !== 1 ? 's' : '' }}
-          <span v-if="schedule.pagination.pages > 1"> · page {{ schedule.pagination.page }} of {{ schedule.pagination.pages }}</span>
+          <span v-if="schedule.pagination.pages > 1" class="page-info"> · page {{ schedule.pagination.page }} of {{ schedule.pagination.pages }}</span>
         </template>
       </span>
     </div>
@@ -475,6 +475,38 @@ watch(pageSize, (newSize) => {
 .data-row { cursor: default; }
 .data-row:hover .ship-name { color: var(--gold); }
 
+.view-mode-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+  gap: 12px;
+}
+
+.results-text {
+  white-space: nowrap;
+}
+
+.filter-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 10px;
+  border-radius: 2px;
+  background: var(--gold-glow);
+  border: 1px solid var(--gold-dim);
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: var(--gold);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.filter-chip:hover {
+  background: var(--gold-dim);
+  transform: translateY(-1px);
+}
+
 .skeleton-row {
   height: 40px;
   background: linear-gradient(90deg, var(--surface-2), var(--surface-3), var(--surface-2));
@@ -566,6 +598,18 @@ watch(pageSize, (newSize) => {
 
   .filters-bar > div:last-child button {
     flex: 1;
+  }
+
+  /* View mode bar - stack on mobile */
+  .view-mode-bar {
+    flex-direction: column;
+    align-items: flex-start !important;
+    gap: 8px;
+  }
+
+  .page-info {
+    display: block;
+    margin-top: 4px;
   }
 }
 </style>
