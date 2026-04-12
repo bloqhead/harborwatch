@@ -607,9 +607,8 @@ watch(pageSize, (newSize) => {
     gap: 8px;
   }
 
-  .page-info {
-    display: block;
-    margin-top: 4px;
+  .results-text {
+    white-space: normal;
   }
 }
 </style>
