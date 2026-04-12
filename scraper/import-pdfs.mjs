@@ -92,6 +92,11 @@ async function discoverPdfLinks(year) {
     }
   }
 
+  // Fallback: try known master PDF URL patterns if not found on page
+  if (!masterPdf && year === 2025) {
+    masterPdf = "https://claalaska.com/wp-content/uploads/2025/05/Alaska-All-Ports-All-Vessels-2025.pdf";
+  }
+
   return { portPdfs, referencePdfs, masterPdf };
 }
 
@@ -165,6 +170,112 @@ function parseDateToISO(dateStr, year) {
   const mm = MONTH_MAP[m[2]] ?? "01";
   const dd = String(parseInt(m[3])).padStart(2, "0");
   return `${year}-${mm}-${dd}`;
+}
+
+// Parse master "All Ports All Vessels" PDF where port codes are embedded in each entry
+function parseMasterPdfText(text, year) {
+  const results = [];
+  const lines = text.split("\n").map(l => l.trim()).filter(Boolean);
+
+  const SKIP = ["Cruise Line Agencies","Cruise Ship Calendar","FOR PORT","AND VOYAGES","AND SHIP","Page "];
+  const DATE_RE = new RegExp(
+    `((${DAY_NAMES.join("|")}),\\s+(?:${Object.keys(MONTH_MAP).join("|")})\\s+\\d{1,2})`, "g"
+  );
+  const timeRe = /^(\d{1,2}:\d{2})\s*(\d{1,2}:\d{2})\s*([A-Z]{2,5})?$/;
+
+  const isDate = l => DAY_NAMES.some(d => l.startsWith(d + ",")) && Object.keys(MONTH_MAP).some(mn => l.includes(mn));
+  const extractDates = l => [...l.matchAll(DATE_RE)].map(m => m[1]);
+  const cleanName = raw => {
+    const cut = raw.search(new RegExp(`\\s+(${DAY_NAMES.join("|")}),\\s+`, "i"));
+    return (cut > 0 ? raw.slice(0, cut) : raw).trim().toUpperCase();
+  };
+
+  let currentDate = "";
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    if (SKIP.some(s => line.includes(s))) continue;
+    if (/^\d{2}:\d{2}\s+\w+day,/.test(line)) continue; // page timestamp
+
+    if (isDate(line)) {
+      const dates = extractDates(line);
+      if (dates.length) currentDate = dates[dates.length - 1];
+      continue;
+    }
+    if (!currentDate) continue;
+
+    const tm = line.match(timeRe);
+    if (!tm) continue;
+
+    let [, arrival, departure, berthCode = null] = tm;
+
+    // Berth code on its own next line
+    if (!berthCode && i + 1 < lines.length && /^[A-Z]{2,5}$/.test(lines[i + 1])) {
+      berthCode = lines[i + 1]; i++;
+    }
+
+    // Find ship line with embedded port code
+    let j = i + 1;
+    while (j < lines.length && lines[j] === "") j++;
+    if (j >= lines.length) continue;
+
+    let portCode = null, portName = null, shipName = null;
+
+    // Skip "-" separator if present
+    if (lines[j] === "-") j++;
+    if (j >= lines.length) continue;
+
+    // Format: "PORTCODESHIP_NAME" - extract port code (2-4 letters) and ship name
+    const portShipMatch = lines[j].match(/^([A-Z]{2,4})([A-Z\s].*)$/);
+    if (portShipMatch) {
+      const possiblePort = portShipMatch[1];
+      const possibleShip = portShipMatch[2];
+
+      // Try matching against known port codes
+      if (PORT_NAMES[possiblePort]) {
+        portCode = possiblePort;
+        portName = PORT_NAMES[possiblePort];
+        shipName = cleanName(possibleShip);
+      } else {
+        // If not a known port, try 3-letter code (most common)
+        const port3 = possiblePort.slice(0, 3);
+        const port2 = possiblePort.slice(0, 2);
+
+        if (PORT_NAMES[port3]) {
+          portCode = port3;
+          portName = PORT_NAMES[port3];
+          shipName = cleanName(possiblePort.slice(3) + possibleShip);
+        } else if (PORT_NAMES[port2]) {
+          portCode = port2;
+          portName = PORT_NAMES[port2];
+          shipName = cleanName(possiblePort.slice(2) + possibleShip);
+        } else {
+          // Default to 3-letter code
+          portCode = port3;
+          portName = port3;
+          shipName = cleanName(possiblePort.slice(3) + possibleShip);
+        }
+      }
+
+      i = j;
+    }
+
+    if (!shipName) continue;
+
+    // Check for trailing date
+    const trailing = extractDates(lines[j]);
+    const nextDate = trailing.length ? trailing[trailing.length - 1] : null;
+
+    results.push({
+      year, port_code: portCode, port_name: portName,
+      ship_name: shipName, date_str: currentDate,
+      date_iso: parseDateToISO(currentDate, year),
+      arrival_time: arrival, departure_time: departure,
+      berth_code: berthCode, day_of_week: currentDate.split(",")[0],
+    });
+
+    if (nextDate) currentDate = nextDate;
+  }
+  return results;
 }
 
 function parsePdfText(text, portCode, portName, year) {
@@ -320,16 +431,49 @@ async function scrapeYear(year, apiBase, portFilter, apiKey) {
     await importReference(apiBase, "ship", c, apiKey);
   }
 
-  // Port schedule PDFs
-  console.log(`\n🛳️  Scraping schedules...\n`);
-  const portsToScrape = portFilter
-    ? [portFilter.toUpperCase()]
-    : [...new Set([...Object.keys(portPdfs), ...Object.keys(PORT_NAMES)])];
-
+  // Try master PDF first if available (for years like 2025 with only master PDF)
   const allRecords = [];
   let ok = 0, fail = 0;
 
-  for (const code of portsToScrape.sort()) {
+  if (masterPdf && !portFilter) {
+    console.log(`\n🛳️  Scraping master PDF...\n`);
+    process.stdout.write(`  📄 All Ports All Vessels... `);
+    const buf = await fetchPdfBuffer(masterPdf);
+    if (buf) {
+      let parsed;
+      try {
+        parsed = await pdfParse(buf);
+        const recs = parseMasterPdfText(parsed.text, year);
+        if (recs.length) {
+          allRecords.push(...recs);
+          const portCounts = {};
+          recs.forEach(r => portCounts[r.port_code] = (portCounts[r.port_code] || 0) + 1);
+          console.log(`✅ ${recs.length} calls across ${Object.keys(portCounts).length} ports`);
+          console.log(`\n📊 ${allRecords.length} total calls\n`);
+        } else {
+          console.log(`❌ no data parsed`);
+        }
+      } catch (e) {
+        console.log(`❌ parse error: ${e.message}`);
+      }
+    } else {
+      console.log(`❌ fetch failed`);
+    }
+  }
+
+  // If master PDF was successful, skip individual port scraping
+  if (allRecords.length > 0 && !portFilter) {
+    // Master PDF already has all data
+  } else {
+    // Port schedule PDFs (individual port files)
+    console.log(`\n🛳️  Scraping schedules...\n`);
+    const portsToScrape = portFilter
+      ? [portFilter.toUpperCase()]
+      : [...new Set([...Object.keys(portPdfs), ...Object.keys(PORT_NAMES)])];
+
+    ok = 0; fail = 0;
+
+    for (const code of portsToScrape.sort()) {
     const portName = PORT_NAMES[code] ?? code;
     process.stdout.write(`  ${code.padEnd(4)} ${portName.padEnd(26)}`);
 
@@ -360,7 +504,8 @@ async function scrapeYear(year, apiBase, portFilter, apiKey) {
     if (!found) { console.log("❌"); fail++; }
   }
 
-  console.log(`\n📊 ${allRecords.length} total calls | ${ok} ports OK | ${fail} failed\n`);
+    console.log(`\n📊 ${allRecords.length} total calls | ${ok} ports OK | ${fail} failed\n`);
+  }
 
   if (allRecords.length) {
     process.stdout.write(`📤 Importing to API... `);
