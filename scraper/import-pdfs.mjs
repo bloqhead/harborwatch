@@ -181,7 +181,7 @@ function parseMasterPdfText(text, year) {
   const DATE_RE = new RegExp(
     `((${DAY_NAMES.join("|")}),\\s+(?:${Object.keys(MONTH_MAP).join("|")})\\s+\\d{1,2})`, "g"
   );
-  const timeRe = /^(\d{1,2}:\d{2})\s*(\d{1,2}:\d{2})\s*([A-Z]{2,5})?$/;
+  const timeRe = /^(\d{1,2}:\d{2})\s*(\d{1,2}:\d{2})\s*([A-Z0-9]{1,5})?$/;
 
   const isDate = l => DAY_NAMES.some(d => l.startsWith(d + ",")) && Object.keys(MONTH_MAP).some(mn => l.includes(mn));
   const extractDates = l => [...l.matchAll(DATE_RE)].map(m => m[1]);
@@ -208,8 +208,8 @@ function parseMasterPdfText(text, year) {
 
     let [, arrival, departure, berthCode = null] = tm;
 
-    // Berth code on its own next line
-    if (!berthCode && i + 1 < lines.length && /^[A-Z]{2,5}$/.test(lines[i + 1])) {
+    // Berth code on its own next line (letters, numbers, or mixed — e.g. "WW", "4", "1A")
+    if (!berthCode && i + 1 < lines.length && /^[A-Z0-9]{1,5}$/.test(lines[i + 1])) {
       berthCode = lines[i + 1]; i++;
     }
 
@@ -286,7 +286,7 @@ function parsePdfText(text, portCode, portName, year) {
   const DATE_RE = new RegExp(
     `((${DAY_NAMES.join("|")}),\\s+(?:${Object.keys(MONTH_MAP).join("|")})\\s+\\d{1,2})`, "g"
   );
-  const timeRe = /^(\d{1,2}:\d{2})\s*(\d{1,2}:\d{2})\s*([A-Z]{2,5})?$/;
+  const timeRe = /^(\d{1,2}:\d{2})\s*(\d{1,2}:\d{2})\s*([A-Z0-9]{1,5})?$/;
 
   const isDate = l => DAY_NAMES.some(d => l.startsWith(d + ",")) && Object.keys(MONTH_MAP).some(mn => l.includes(mn));
   const extractDates = l => [...l.matchAll(DATE_RE)].map(m => m[1]);
@@ -313,8 +313,8 @@ function parsePdfText(text, portCode, portName, year) {
 
     let [, arrival, departure, berthCode = null] = tm;
 
-    // Berth code on its own next line
-    if (!berthCode && i + 1 < lines.length && /^[A-Z]{2,5}$/.test(lines[i + 1])) {
+    // Berth code on its own next line (letters, numbers, or mixed — e.g. "WW", "4", "1A")
+    if (!berthCode && i + 1 < lines.length && /^[A-Z0-9]{1,5}$/.test(lines[i + 1])) {
       berthCode = lines[i + 1]; i++;
     }
 
