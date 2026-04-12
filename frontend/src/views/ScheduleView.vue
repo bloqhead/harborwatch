@@ -436,7 +436,12 @@ onMounted(async () => {
   if (route.query.port) filters.value.port = String(route.query.port);
   if (route.query.ship) filters.value.ship = String(route.query.ship);
   if (route.query.year) filters.value.year = String(route.query.year);
-  else if (years.value.length) filters.value.year = String(years.value[0]);
+  else if (years.value.length) {
+    // Default to current year if available, otherwise use the first year
+    const currentYear = new Date().getFullYear();
+    const hasCurrentYear = years.value.includes(currentYear);
+    filters.value.year = String(hasCurrentYear ? currentYear : years.value[0]);
+  }
 
   await loadSchedule();
 });

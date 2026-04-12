@@ -191,7 +191,12 @@ watch(selectedYear, loadStats);
 
 onMounted(async () => {
   years.value = await api.getYears();
-  if (years.value.length) selectedYear.value = String(years.value[0]);
+  if (years.value.length) {
+    // Default to current year if available, otherwise use the first year
+    const currentYear = new Date().getFullYear();
+    const hasCurrentYear = years.value.includes(currentYear);
+    selectedYear.value = String(hasCurrentYear ? currentYear : years.value[0]);
+  }
   await loadStats();
 });
 </script>

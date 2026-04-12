@@ -293,7 +293,12 @@ watch(() => themeStore.theme, () => {
 onMounted(async () => {
   const yr = await api.getYears();
   years.value = yr ?? [];
-  if (years.value.length > 0) selectedYear.value = String(years.value[0]);
+  if (years.value.length > 0) {
+    // Default to current year if available, otherwise use the first year
+    const currentYear = new Date().getFullYear();
+    const hasCurrentYear = years.value.includes(currentYear);
+    selectedYear.value = String(hasCurrentYear ? currentYear : years.value[0]);
+  }
 
   // Init map after DOM is ready
   await new Promise(r => setTimeout(r, 50));
