@@ -6,7 +6,8 @@ WORKDIR /app
 ENV DENO_DIR=/app/.deno-cache
 
 # Cache dependencies at build time (baked into image layer)
-COPY main.ts .
+# Note: Build context is repo root, so we copy from backend/ subdirectory
+COPY backend/main.ts .
 RUN deno cache main.ts
 
 # Ensure data directory exists (will be replaced by Render persistent disk mount)
