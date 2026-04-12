@@ -1,0 +1,17 @@
+{
+  "name": "harborwatch-scraper",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Scrapes CLA Alaska cruise PDFs and imports to the API",
+  "scripts": {
+    "scrape": "node import-pdfs.mjs",
+    "scrape:2025": "node import-pdfs.mjs --year 2025",
+    "scrape:2026": "node import-pdfs.mjs --year 2026"
+  },
+  "dependencies": {
+    "pdf-parse": "1.1.1"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

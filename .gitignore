@@ -1,0 +1,29 @@
+# DB files
+*.db
+*.db-shm
+*.db-wal
+
+# Node
+node_modules/
+npm-debug.log*
+
+# Vite / build output
+frontend/dist/
+frontend/.vite/
+
+# Deno cache
+.deno/
+
+# Env files
+.env
+.env.local
+.env.*.local
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+*.swp
