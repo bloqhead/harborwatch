@@ -104,7 +104,7 @@
             <div v-for="port in stats.topPorts" :key="port.code" class="bar-row">
               <div class="bar-label" :title="port.name">
                 <router-link :to="`/?port=${port.code}&year=${selectedYear}`"
-                  style="text-decoration:none;">
+                  style="text-decoration:none;" @click="events.statsPortLink(port.code)">
                   <span class="badge badge-port" style="font-size:0.62rem; padding:1px 5px;">{{ port.code }}</span>
                 </router-link>
                 <span style="margin-left:4px; color:var(--text-secondary); font-size:0.7rem;">{{ port.name }}</span>
@@ -127,7 +127,7 @@
             <div v-for="ship in stats.topShips" :key="ship.name" class="bar-row">
               <div class="bar-label" :title="ship.name" style="width:180px;">
                 <router-link :to="`/?ship=${encodeURIComponent(ship.name)}&year=${selectedYear}`"
-                  style="text-decoration:none; color:var(--text-secondary); font-size:0.73rem;">
+                  style="text-decoration:none; color:var(--text-secondary); font-size:0.73rem;" @click="events.statsShipLink(ship.name)">
                   {{ ship.name }}
                 </router-link>
               </div>
@@ -157,10 +157,12 @@
 import { ref, computed, onMounted, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useApi, type Stats } from "../stores/api";
+import { useAnalytics } from "../composables/useAnalytics";
 
 const api = useApi();
 const route = useRoute();
 const router = useRouter();
+const { events } = useAnalytics();
 const years = ref<number[]>([]);
 const stats = ref<Stats | null>(null);
 const selectedYear = ref("");
@@ -202,6 +204,7 @@ async function loadStats() {
 }
 
 watch(selectedYear, (y) => {
+  events.statsYearSwitch(y);
   router.replace({ query: y ? { year: y } : {} });
   loadStats();
 });

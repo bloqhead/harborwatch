@@ -138,11 +138,13 @@ import "leaflet/dist/leaflet.css";
 import { PORT_GEO, REGION_COLORS, type PortGeo } from "../data/ports";
 import { useThemeStore } from "../stores/theme";
 import { useApi } from "../stores/api";
+import { useAnalytics } from "../composables/useAnalytics";
 
 const themeStore = useThemeStore();
 const api = useApi();
 const route = useRoute();
 const router = useRouter();
+const { events } = useAnalytics();
 const mapEl = ref<HTMLElement | null>(null);
 let map: L.Map | null = null;
 let markers: L.CircleMarker[] = [];
@@ -179,6 +181,7 @@ const filteredPortList = computed(() => {
 
 function filterRegion(region: string) {
   regionFilter.value = region === regionFilter.value ? null : region;
+  if (regionFilter.value) events.mapRegionFilter(region);
   renderMarkers();
 }
 
@@ -242,6 +245,7 @@ async function selectPort(port: PortGeo) {
   selectedPort.value = port;
   portDetail.value = null;
   pushMapUrl();
+  events.mapPortClick(port.code, selectedYear.value);
   map?.panTo([port.lat, port.lng], { animate: true, duration: 0.5 });
   renderMarkers();
 

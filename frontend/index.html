@@ -16,5 +16,18 @@
 <body>
   <div id="app"></div>
   <script type="module" src="/src/main.ts"></script>
+  <!-- Umami analytics — only loads when VITE_UMAMI_SITE_ID is set -->
+  <script>
+    (function() {
+      var siteId = '%VITE_UMAMI_SITE_ID%';
+      var src = '%VITE_UMAMI_URL%/script.js';
+      if (!siteId || siteId === '%VITE_UMAMI_SITE_ID%') return;
+      var s = document.createElement('script');
+      s.defer = true;
+      s.setAttribute('data-website-id', siteId);
+      s.src = src;
+      document.head.appendChild(s);
+    })();
+  </script>
 </body>
 </html>

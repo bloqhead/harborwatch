@@ -244,10 +244,12 @@
 import { ref, computed, onMounted, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useApi, type PortCall } from "../stores/api";
+import { useAnalytics } from "../composables/useAnalytics";
 
 const api = useApi();
 const route = useRoute();
 const router = useRouter();
+const { events } = useAnalytics();
 
 // ── URL sync helpers ──────────────────────────────────────────────────────────
 function pushUrl() {
@@ -301,6 +303,7 @@ async function copyUrl() {
   try {
     await navigator.clipboard.writeText(window.location.href);
     copied.value = true;
+    events.shareUrl('schedule');
     setTimeout(() => { copied.value = false; }, 2000);
   } catch {
     prompt("Copy this URL:", window.location.href);
@@ -349,11 +352,13 @@ function jumpToWeek() {
 // ── Inline filter clicks ──────────────────────────────────────────────────
 function filterPort(code: string) {
   filters.value.port = code;
+  events.filterPort(code, filters.value.year);
   resetAndSearch();
 }
 
 function filterShip(name: string) {
   filters.value.ship = name;
+  events.filterShip(name, filters.value.year);
   resetAndSearch();
 }
 
@@ -380,7 +385,7 @@ function berthDesc(code: string): string {
 
 // ── CSV Export ────────────────────────────────────────────────────────────
 async function exportCsv() {
-  // Fetch all matching records (up to 5000)
+  events.exportCsv(filters.value.year, filters.value.port);
   const params: Record<string, string | number> = { page: 1, limit: 5000 };
   if (filters.value.year)      params.year      = filters.value.year;
   if (filters.value.port)      params.port      = filters.value.port;
@@ -440,6 +445,7 @@ function clearFilters() {
 
 function goPage(p: number) {
   currentPage.value = p;
+  events.paginate(p);
   pushUrl();
   loadSchedule();
   window.scrollTo({ top: 0, behavior: "smooth" });
@@ -486,7 +492,7 @@ function formatDate(iso: string) {
   return new Date(+y, +m - 1, +d).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 }
 
-watch(viewMode, () => { currentPage.value = 1; pushUrl(); loadSchedule(); });
+watch(viewMode, (v) => { currentPage.value = 1; events.switchView(v); pushUrl(); loadSchedule(); });
 
 onMounted(async () => {
   const [yearsData, portsData, berthData] = await Promise.all([
