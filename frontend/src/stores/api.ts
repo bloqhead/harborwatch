@@ -38,6 +38,43 @@ export interface Stats {
   byDayOfWeek: { day: string; calls: number }[];
 }
 
+export interface ShipMetadata {
+  imo: string | null;
+  cruise_line: string | null;
+  flag: string | null;
+  gross_tonnage: number | null;
+  passengers: number | null;
+  crew: number | null;
+  year_built: number | null;
+  length_m: number | null;
+  beam_m: number | null;
+  homeport: string | null;
+  notes: string | null;
+  mt_url: string | null;
+}
+
+export interface ShipPortCall {
+  date_iso: string;
+  port_code: string;
+  arrival_time: string | null;
+  departure_time: string | null;
+  berth_code: string | null;
+  day_of_week: string;
+}
+
+export interface ShipDetail {
+  name: string;
+  totalCalls: number;
+  uniquePorts: number;
+  yearsActive: number[];
+  firstCall: { date: string; port: string } | null;
+  lastCall:  { date: string; port: string } | null;
+  portCalls: ShipPortCall[];
+  topPorts: { code: string; name: string; calls: number }[];
+  byMonth: { month: number; calls: number }[];
+  metadata: ShipMetadata | null;
+}
+
 export function useApi() {
   const loading = ref(false);
   const error = ref<string | null>(null);
@@ -121,5 +158,10 @@ export function useApi() {
     }
   }
 
-  return { loading, error, getYears, getPorts, getShips, getSchedule, getStats, getPortDetail, importRecords };
+  async function getShipDetail(name: string, year?: string): Promise<ShipDetail | null> {
+    const qs = year ? `?year=${year}` : "";
+    return fetchJson<ShipDetail>(`/ship/${encodeURIComponent(name)}${qs}`);
+  }
+
+  return { loading, error, getYears, getPorts, getShips, getSchedule, getStats, getPortDetail, getShipDetail, importRecords };
 }

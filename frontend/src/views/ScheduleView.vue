@@ -143,7 +143,13 @@
                   <span class="badge badge-port" style="cursor:pointer;" @click.stop="filterPort(row.port_code)">{{ row.port_code }}</span>
                   <span style="margin-left:6px; color:var(--text-secondary); font-size:0.73rem;">{{ row.port_name }}</span>
                 </td>
-                <td class="ship-name" style="cursor:pointer;" @click.stop="filterShip(row.ship_name)">{{ row.ship_name }}</td>
+                <td style="white-space:nowrap;">
+                  <router-link :to="`/ship/${encodeURIComponent(row.ship_name)}${selectedYear ? '?year=' + selectedYear : ''}`"
+                    class="ship-name ship-link" :title="`View ${row.ship_name} detail`">
+                    {{ row.ship_name }}
+                  </router-link>
+                  <span class="ship-filter-btn" @click.stop="filterShip(row.ship_name)" title="Filter to this ship">⊕</span>
+                </td>
                 <td><span class="time-in">{{ row.arrival_time ?? '—' }}</span></td>
                 <td><span class="time-out">{{ row.departure_time ?? '—' }}</span></td>
                 <td style="color:var(--text-muted); font-size:0.78rem;">{{ hoursInPort(row.arrival_time, row.departure_time) }}</td>
@@ -213,7 +219,13 @@
               <tbody>
                 <tr v-for="call in group.calls" :key="call.id">
                   <td><span class="badge badge-port" style="cursor:pointer;" @click="filterPort(call.port_code)">{{ call.port_code }}</span></td>
-                  <td class="ship-name" style="cursor:pointer;" @click="filterShip(call.ship_name)">{{ call.ship_name }}</td>
+                  <td style="white-space:nowrap;">
+                    <router-link :to="`/ship/${encodeURIComponent(call.ship_name)}${selectedYear ? '?year=' + selectedYear : ''}`"
+                      class="ship-name ship-link">
+                      {{ call.ship_name }}
+                    </router-link>
+                    <span class="ship-filter-btn" @click.stop="filterShip(call.ship_name)" title="Filter to this ship">⊕</span>
+                  </td>
                   <td><span class="time-in">{{ call.arrival_time ?? '—' }}</span></td>
                   <td><span class="time-out">{{ call.departure_time ?? '—' }}</span></td>
                   <td style="color:var(--text-muted); font-size:0.78rem;">{{ hoursInPort(call.arrival_time, call.departure_time) }}</td>
@@ -250,6 +262,9 @@ const api = useApi();
 const route = useRoute();
 const router = useRouter();
 const { events } = useAnalytics();
+
+// Shorthand for template ship links
+const selectedYear = computed(() => filters.value.year);
 
 // ── URL sync helpers ──────────────────────────────────────────────────────────
 function pushUrl() {

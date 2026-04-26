@@ -41,6 +41,24 @@ db.execute(`
     first_seen_year INTEGER
   );
 
+  -- Extended ship metadata (enriched from external sources)
+  CREATE TABLE IF NOT EXISTS ship_metadata (
+    name          TEXT PRIMARY KEY,
+    imo           TEXT,
+    cruise_line   TEXT,
+    gross_tonnage INTEGER,
+    passengers    INTEGER,
+    crew          INTEGER,
+    year_built    INTEGER,
+    length_m      REAL,
+    beam_m        REAL,
+    flag          TEXT,
+    homeport      TEXT,
+    notes         TEXT,
+    mt_url        TEXT,   -- MarineTraffic URL
+    updated_at    TEXT DEFAULT (datetime('now'))
+  );
+
   -- Reference lookup tables from the 3 CLA PDFs
   CREATE TABLE IF NOT EXISTS ref_berth_codes (
     code        TEXT PRIMARY KEY,
@@ -109,8 +127,19 @@ router.get("/api/ports", (ctx) => {
   jsonOk(ctx, { ports });
 });
 
-// GET /api/ships
+// GET /api/ships — all ship names with optional metadata
 router.get("/api/ships", (ctx) => {
+  const withMeta = ctx.request.url.searchParams.get("meta") === "1";
+  if (withMeta) {
+    const ships = db.query<[string, number | null, string | null, string | null, number | null]>(
+      `SELECT s.name, s.first_seen_year, m.cruise_line, m.imo, m.gross_tonnage
+       FROM ships s LEFT JOIN ship_metadata m ON s.name = m.name
+       ORDER BY s.name`
+    ).map(([name, first_seen_year, cruise_line, imo, gross_tonnage]) => ({
+      name, first_seen_year, cruise_line, imo, gross_tonnage
+    }));
+    return jsonOk(ctx, { ships });
+  }
   const ships = db.query<[string]>(
     "SELECT DISTINCT ship_name FROM port_calls ORDER BY ship_name"
   ).map(([name]) => name);
@@ -215,7 +244,126 @@ router.get("/api/stats", (ctx) => {
   });
 });
 
-// GET /api/port/:code  — detail for a single port
+// GET /api/ship/:name — full detail for a single ship
+router.get("/api/ship/:name", (ctx) => {
+  const name = decodeURIComponent(ctx.params.name ?? "").toUpperCase();
+  const year = ctx.request.url.searchParams.get("year");
+  if (!name) return jsonErr(ctx, 400, "name required");
+
+  const yearCond = year ? "AND year = ?" : "";
+  const vals: (string | number)[] = year ? [name, parseInt(year)] : [name];
+
+  const totalCalls = db.query<[number]>(
+    `SELECT COUNT(*) FROM port_calls WHERE ship_name = ? ${yearCond}`, vals
+  )[0][0];
+
+  if (totalCalls === 0) return jsonErr(ctx, 404, `No data for ship: ${name}`);
+
+  const yearsActive = db.query<[number]>(
+    `SELECT DISTINCT year FROM port_calls WHERE ship_name = ? ORDER BY year`, [name]
+  ).map(([y]) => y);
+
+  const portCalls = db.query<[string, string, string | null, string | null, string | null, string]>(
+    `SELECT date_iso, port_code, arrival_time, departure_time, berth_code, day_of_week
+     FROM port_calls WHERE ship_name = ? ${yearCond}
+     ORDER BY date_iso ASC, arrival_time ASC`,
+    vals
+  ).map(([date_iso, port_code, arrival_time, departure_time, berth_code, day_of_week]) => ({
+    date_iso, port_code, arrival_time, departure_time, berth_code, day_of_week
+  }));
+
+  // Port visit counts
+  const topPorts = db.query<[string, string, number]>(
+    `SELECT port_code, port_name, COUNT(*) as calls
+     FROM port_calls WHERE ship_name = ? ${yearCond}
+     GROUP BY port_code ORDER BY calls DESC LIMIT 10`,
+    vals
+  ).map(([code, name, calls]) => ({ code, name, calls }));
+
+  // Monthly distribution
+  const byMonth = db.query<[string, number]>(
+    `SELECT strftime('%m', date_iso) as month, COUNT(*) as calls
+     FROM port_calls WHERE ship_name = ? ${yearCond}
+     GROUP BY month ORDER BY month`,
+    vals
+  ).map(([month, calls]) => ({ month: parseInt(month), calls }));
+
+  // Unique ports visited
+  const uniquePorts = db.query<[number]>(
+    `SELECT COUNT(DISTINCT port_code) FROM port_calls WHERE ship_name = ? ${yearCond}`, vals
+  )[0][0];
+
+  // First and last call this season
+  const firstCall = db.query<[string, string]>(
+    `SELECT date_iso, port_code FROM port_calls WHERE ship_name = ? ${yearCond} ORDER BY date_iso ASC LIMIT 1`, vals
+  )[0];
+  const lastCall = db.query<[string, string]>(
+    `SELECT date_iso, port_code FROM port_calls WHERE ship_name = ? ${yearCond} ORDER BY date_iso DESC LIMIT 1`, vals
+  )[0];
+
+  // Metadata if available
+  const meta = db.query<[string|null,string|null,string|null,number|null,number|null,number|null,number|null,number|null,number|null,string|null,string|null,string|null]>(
+    `SELECT imo, cruise_line, flag, gross_tonnage, passengers, crew, year_built,
+            length_m, beam_m, homeport, notes, mt_url
+     FROM ship_metadata WHERE name = ?`, [name]
+  ).map(([imo,cruise_line,flag,gross_tonnage,passengers,crew,year_built,length_m,beam_m,homeport,notes,mt_url]) => ({
+    imo, cruise_line, flag, gross_tonnage, passengers, crew, year_built,
+    length_m, beam_m, homeport, notes, mt_url
+  }))[0] ?? null;
+
+  jsonOk(ctx, {
+    name,
+    totalCalls,
+    uniquePorts,
+    yearsActive,
+    firstCall: firstCall ? { date: firstCall[0], port: firstCall[1] } : null,
+    lastCall:  lastCall  ? { date: lastCall[0],  port: lastCall[1]  } : null,
+    portCalls,
+    topPorts,
+    byMonth,
+    metadata: meta,
+  });
+});
+
+// POST /api/ship-metadata — upsert metadata for one or more ships (requires API key)
+router.post("/api/ship-metadata", async (ctx) => {
+  if (!requireApiKey(ctx)) return;
+  const body = await ctx.request.body.json();
+  const { ships } = body;
+  if (!Array.isArray(ships)) return jsonErr(ctx, 400, "Expected { ships: [...] }");
+
+  let upserted = 0;
+  db.execute("BEGIN TRANSACTION");
+  try {
+    for (const s of ships) {
+      db.query(
+        `INSERT INTO ship_metadata (name, imo, cruise_line, gross_tonnage, passengers, crew,
+          year_built, length_m, beam_m, flag, homeport, notes, mt_url, updated_at)
+         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?, datetime('now'))
+         ON CONFLICT(name) DO UPDATE SET
+           imo=excluded.imo, cruise_line=excluded.cruise_line,
+           gross_tonnage=excluded.gross_tonnage, passengers=excluded.passengers,
+           crew=excluded.crew, year_built=excluded.year_built,
+           length_m=excluded.length_m, beam_m=excluded.beam_m,
+           flag=excluded.flag, homeport=excluded.homeport,
+           notes=excluded.notes, mt_url=excluded.mt_url,
+           updated_at=datetime('now')`,
+        [s.name, s.imo??null, s.cruise_line??null, s.gross_tonnage??null,
+         s.passengers??null, s.crew??null, s.year_built??null,
+         s.length_m??null, s.beam_m??null, s.flag??null,
+         s.homeport??null, s.notes??null, s.mt_url??null]
+      );
+      upserted++;
+    }
+    db.execute("COMMIT");
+    jsonOk(ctx, { success: true, upserted });
+  } catch (e) {
+    db.execute("ROLLBACK");
+    jsonErr(ctx, 500, String(e));
+  }
+});
+
+// GET /api/port/:code — detail for a single port
 router.get("/api/port/:code", (ctx) => {
   const code = ctx.params.code?.toUpperCase();
   const year = ctx.request.url.searchParams.get("year");

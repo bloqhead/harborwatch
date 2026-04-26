@@ -489,6 +489,27 @@ h3 { font-size: 1.1rem; font-weight: 700; }
   font-weight: 500;
 }
 
+.ship-link {
+  text-decoration: none;
+  color: var(--text-primary);
+  font-weight: 500;
+  transition: color 0.15s;
+}
+.ship-link:hover { color: var(--gold); }
+
+.ship-filter-btn {
+  display: inline-block;
+  margin-left: 5px;
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s, color 0.15s;
+  vertical-align: middle;
+}
+tr:hover .ship-filter-btn { opacity: 1; }
+.ship-filter-btn:hover { color: var(--gold); }
+
 /* ---- Time display ---- */
 .time-range {
   display: flex;

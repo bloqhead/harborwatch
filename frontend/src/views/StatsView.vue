@@ -125,8 +125,8 @@
           </div>
           <div class="bar-chart">
             <div v-for="ship in stats.topShips" :key="ship.name" class="bar-row">
-              <div class="bar-label" :title="ship.name" style="width:180px;">
-                <router-link :to="`/?ship=${encodeURIComponent(ship.name)}&year=${selectedYear}`"
+              <div class="bar-label" :title="ship.name" style="width:180px; display:flex; align-items:center; gap:4px;">
+                <router-link :to="`/ship/${encodeURIComponent(ship.name)}${selectedYear ? '?year=' + selectedYear : ''}`"
                   style="text-decoration:none; color:var(--text-secondary); font-size:0.73rem;" @click="events.statsShipLink(ship.name)">
                   {{ ship.name }}
                 </router-link>

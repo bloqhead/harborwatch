@@ -73,6 +73,19 @@ export function useAnalytics() {
     // Navigation
     shareUrl:     (page: string) =>
       track('share_url', { page }),
+
+    // Ship detail
+    shipView:         (ship: string) =>
+      track('ship_view', { ship: ship.slice(0, 50) }),
+
+    shipExternalLink: (ship: string, destination: 'marinetraffic' | 'shipmapper' | 'vesselfinder') =>
+      track('ship_external_link', { ship: ship.slice(0, 50), destination }),
+
+    shipYearSwitch:   (ship: string, year: string) =>
+      track('ship_year_switch', { ship: ship.slice(0, 50), year }),
+
+    shipShareUrl:     (ship: string) =>
+      track('share_url', { page: 'ship', ship: ship.slice(0, 50) }),
   };
 
   return { track, events };
