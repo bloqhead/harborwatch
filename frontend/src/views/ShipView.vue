@@ -3,7 +3,7 @@
     <!-- Loading -->
     <template v-if="api.loading.value && !ship">
       <div class="loading-bar" style="margin-bottom:24px;" />
-      <div style="display:grid; grid-template-columns:1fr 320px; gap:20px;">
+      <div class="ship-detail-grid">
         <div class="card" style="padding:0; overflow:hidden;">
           <div v-for="i in 12" :key="i" class="skeleton-row" :style="{ opacity: 1 - i * 0.07 }" />
         </div>
@@ -59,7 +59,7 @@
         </div>
       </div>
 
-      <div style="display:grid; grid-template-columns:1fr 320px; gap:20px; align-items:start;">
+      <div class="ship-detail-grid">
 
         <!-- Left: Timeline + Voyage -->
         <div>
@@ -490,6 +490,26 @@ onMounted(async () => {
   background-size: 200% 100%;
   animation: shimmer 1.5s infinite;
   border-bottom: 1px solid var(--navy-border);
+}
+
+/* Two-column layout: timeline left, sidebar right */
+.ship-detail-grid {
+  display: grid;
+  grid-template-columns: 1fr 320px;
+  gap: 20px;
+  align-items: start;
+}
+
+/* Collapse to single column on mobile */
+@media (max-width: 768px) {
+  .ship-detail-grid {
+    grid-template-columns: 1fr;
+  }
+
+  /* On mobile, sidebar moves below timeline — reorder so stats show first */
+  .ship-detail-grid > div:last-child {
+    order: -1;
+  }
 }
 
 .external-link-btn {
