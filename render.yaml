@@ -46,14 +46,15 @@ services:
   # Self-hosted, privacy-friendly analytics. No cookies, no GDPR headaches.
   # After first deploy:
   #   1. Visit https://harborwatch-analytics.onrender.com
-  #   2. Log in with admin / umami (change this immediately)
-  #   3. Add a website → copy the Site ID
-  #   4. Set VITE_UMAMI_SITE_ID on harborwatch-ui and redeploy frontend
+  #   2. Log in with admin / umami (CHANGE PASSWORD IMMEDIATELY)
+  #   3. Settings → Websites → Add Website → harborwatch-ui.onrender.com
+  #   4. Copy the Site ID, set VITE_UMAMI_SITE_ID on harborwatch-ui, redeploy
   - type: web
     name: harborwatch-analytics
-    runtime: docker
+    runtime: image
     image:
       url: ghcr.io/umami-software/umami:postgresql-latest
+    plan: free
     envVars:
       - key: DATABASE_URL
         fromDatabase:
@@ -64,4 +65,5 @@ services:
 
 databases:
   - name: harborwatch-analytics-db
+    databaseName: harborwatch_analytics
     plan: free
