@@ -155,9 +155,12 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from "vue";
+import { useRoute, useRouter } from "vue-router";
 import { useApi, type Stats } from "../stores/api";
 
 const api = useApi();
+const route = useRoute();
+const router = useRouter();
 const years = ref<number[]>([]);
 const stats = ref<Stats | null>(null);
 const selectedYear = ref("");
@@ -198,12 +201,17 @@ async function loadStats() {
   stats.value = await api.getStats(selectedYear.value || undefined);
 }
 
-watch(selectedYear, loadStats);
+watch(selectedYear, (y) => {
+  router.replace({ query: y ? { year: y } : {} });
+  loadStats();
+});
 
 onMounted(async () => {
   years.value = await api.getYears();
-  if (years.value.length) {
-    // Default to current year if available, otherwise use the first year
+  // Read year from URL first
+  if (route.query.year) {
+    selectedYear.value = String(route.query.year);
+  } else if (years.value.length) {
     const currentYear = new Date().getFullYear();
     const hasCurrentYear = years.value.includes(currentYear);
     selectedYear.value = String(hasCurrentYear ? currentYear : years.value[0]);

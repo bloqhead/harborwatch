@@ -73,7 +73,7 @@
                 {{ selectedPort.description }}
               </div>
             </div>
-            <button class="btn btn-ghost" style="font-size:0.7rem; padding:4px 8px;" @click="selectedPort = null">✕</button>
+            <button class="btn btn-ghost" style="font-size:0.7rem; padding:4px 8px;" @click="clearPort">✕</button>
           </div>
 
           <!-- Port stats -->
@@ -132,6 +132,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, watch } from "vue";
+import { useRoute, useRouter } from "vue-router";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { PORT_GEO, REGION_COLORS, type PortGeo } from "../data/ports";
@@ -140,6 +141,8 @@ import { useApi } from "../stores/api";
 
 const themeStore = useThemeStore();
 const api = useApi();
+const route = useRoute();
+const router = useRouter();
 const mapEl = ref<HTMLElement | null>(null);
 let map: L.Map | null = null;
 let markers: L.CircleMarker[] = [];
@@ -228,9 +231,17 @@ function renderMarkers() {
   }
 }
 
+function clearPort() {
+  selectedPort.value = null;
+  portDetail.value = null;
+  pushMapUrl();
+  renderMarkers();
+}
+
 async function selectPort(port: PortGeo) {
   selectedPort.value = port;
   portDetail.value = null;
+  pushMapUrl();
   map?.panTo([port.lat, port.lng], { animate: true, duration: 0.5 });
   renderMarkers();
 
@@ -292,7 +303,15 @@ function initMap() {
   renderMarkers();
 }
 
+function pushMapUrl() {
+  const q: Record<string, string> = {};
+  if (selectedYear.value)   q.year = selectedYear.value;
+  if (selectedPort.value)   q.port = selectedPort.value.code;
+  router.replace({ query: q });
+}
+
 watch(selectedYear, () => {
+  pushMapUrl();
   loadPortStats();
   if (selectedPort.value) selectPort(selectedPort.value);
 });
@@ -305,8 +324,11 @@ watch(() => themeStore.theme, () => {
 onMounted(async () => {
   const yr = await api.getYears();
   years.value = yr ?? [];
-  if (years.value.length > 0) {
-    // Default to current year if available, otherwise use the first year
+
+  // Read URL params first
+  if (route.query.year) {
+    selectedYear.value = String(route.query.year);
+  } else if (years.value.length > 0) {
     const currentYear = new Date().getFullYear();
     const hasCurrentYear = years.value.includes(currentYear);
     selectedYear.value = String(hasCurrentYear ? currentYear : years.value[0]);
@@ -316,6 +338,13 @@ onMounted(async () => {
   await new Promise(r => setTimeout(r, 50));
   initMap();
   await loadPortStats();
+
+  // Auto-select port from URL after stats are loaded
+  if (route.query.port) {
+    const portCode = String(route.query.port).toUpperCase();
+    const portGeo = PORT_GEO[portCode];
+    if (portGeo) selectPort(portGeo);
+  }
 });
 
 onUnmounted(() => {

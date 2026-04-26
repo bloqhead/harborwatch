@@ -87,12 +87,17 @@
         <button class="btn text-base" :class="viewMode==='table'?'btn-primary':'btn-ghost'" @click="viewMode='table'">☰ Table</button>
         <button class="btn text-base" :class="viewMode==='day'?'btn-primary':'btn-ghost'" @click="viewMode='day'">📅 By Day</button>
       </div>
-      <span class="font-mono text-base text-muted results-text">
-        <template v-if="schedule && !api.loading.value">
-          {{ schedule.pagination.total.toLocaleString() }} result{{ schedule.pagination.total !== 1 ? 's' : '' }}
-          <span v-if="schedule.pagination.pages > 1" class="page-info"> · page {{ schedule.pagination.page }} of {{ schedule.pagination.pages }}</span>
-        </template>
-      </span>
+      <div style="display:flex; align-items:center; gap:8px;">
+        <span class="font-mono text-base text-muted results-text">
+          <template v-if="schedule && !api.loading.value">
+            {{ schedule.pagination.total.toLocaleString() }} result{{ schedule.pagination.total !== 1 ? 's' : '' }}
+            <span v-if="schedule.pagination.pages > 1" class="page-info"> · page {{ schedule.pagination.page }} of {{ schedule.pagination.pages }}</span>
+          </template>
+        </span>
+        <button class="btn btn-ghost text-sm" style="white-space:nowrap;" @click="copyUrl" :title="copied ? 'Copied!' : 'Copy shareable link'">
+          {{ copied ? '✅ Copied!' : '🔗 Share' }}
+        </button>
+      </div>
     </div>
 
     <!-- Loading skeleton -->
@@ -237,11 +242,48 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from "vue";
-import { useRoute } from "vue-router";
+import { useRoute, useRouter } from "vue-router";
 import { useApi, type PortCall } from "../stores/api";
 
 const api = useApi();
 const route = useRoute();
+const router = useRouter();
+
+// ── URL sync helpers ──────────────────────────────────────────────────────────
+function pushUrl() {
+  const q: Record<string, string> = {};
+  if (filters.value.year)      q.year      = filters.value.year;
+  if (filters.value.port)      q.port      = filters.value.port;
+  if (filters.value.ship)      q.ship      = filters.value.ship;
+  if (filters.value.date_from) q.date_from = filters.value.date_from;
+  if (filters.value.date_to)   q.date_to   = filters.value.date_to;
+  if (filters.value.berth)     q.berth     = filters.value.berth;
+  if (viewMode.value !== "table") q.view   = viewMode.value;
+  if (currentPage.value > 1)   q.page      = String(currentPage.value);
+  if (pageSize.value !== 100)  q.limit     = String(pageSize.value);
+  router.replace({ query: q });
+}
+
+function readUrl() {
+  const q = route.query;
+  filters.value.year      = String(q.year      ?? "");
+  filters.value.port      = String(q.port      ?? "");
+  filters.value.ship      = String(q.ship      ?? "");
+  filters.value.date_from = String(q.date_from ?? "");
+  filters.value.date_to   = String(q.date_to   ?? "");
+  filters.value.berth     = String(q.berth     ?? "");
+  viewMode.value          = q.view === "day" ? "day" : "table";
+  currentPage.value       = parseInt(String(q.page  ?? "1"))  || 1;
+  if (q.limit) pageSize.value = parseInt(String(q.limit)) || 100;
+}
+
+// Back/forward navigation re-reads URL and reloads data
+watch(() => route.query, (newQ, oldQ) => {
+  if (JSON.stringify(newQ) !== JSON.stringify(oldQ)) {
+    readUrl();
+    loadSchedule();
+  }
+}, { deep: true });
 
 const years = ref<number[]>([]);
 const ports = ref<{ code: string; name: string }[]>([]);
@@ -253,6 +295,17 @@ const currentPage = ref(1);
 const pageSize = ref(parseInt(localStorage.getItem("harborwatch-page-size") || "100"));
 const selectedMonth = ref<number | "">("");
 const filtersExpanded = ref(false);
+const copied = ref(false);
+
+async function copyUrl() {
+  try {
+    await navigator.clipboard.writeText(window.location.href);
+    copied.value = true;
+    setTimeout(() => { copied.value = false; }, 2000);
+  } catch {
+    prompt("Copy this URL:", window.location.href);
+  }
+}
 
 const filters = ref({
   year: "", port: "", ship: "", date_from: "", date_to: "", berth: "",
@@ -378,7 +431,7 @@ async function loadSchedule() {
   schedule.value = await api.getSchedule(params);
 }
 
-function resetAndSearch() { currentPage.value = 1; loadSchedule(); }
+function resetAndSearch() { currentPage.value = 1; pushUrl(); loadSchedule(); }
 
 function clearFilters() {
   filters.value = { year: filters.value.year, port: "", ship: "", date_from: "", date_to: "", berth: "" };
@@ -387,6 +440,7 @@ function clearFilters() {
 
 function goPage(p: number) {
   currentPage.value = p;
+  pushUrl();
   loadSchedule();
   window.scrollTo({ top: 0, behavior: "smooth" });
 }
@@ -432,7 +486,7 @@ function formatDate(iso: string) {
   return new Date(+y, +m - 1, +d).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 }
 
-watch(viewMode, resetAndSearch);
+watch(viewMode, () => { currentPage.value = 1; pushUrl(); loadSchedule(); });
 
 onMounted(async () => {
   const [yearsData, portsData, berthData] = await Promise.all([
@@ -443,28 +497,25 @@ onMounted(async () => {
   years.value = yearsData;
   ports.value = portsData;
 
-  // Build berth lookup map
   for (const { code, description } of (berthData.codes ?? [])) {
     berthCodes.value[code] = description;
   }
 
-  if (route.query.port) filters.value.port = String(route.query.port);
-  if (route.query.ship) filters.value.ship = String(route.query.ship);
-  if (route.query.year) filters.value.year = String(route.query.year);
-  else if (years.value.length) {
-    // Default to current year if available, otherwise use the first year
+  // Read URL params first; only default year if not specified in URL
+  readUrl();
+  if (!filters.value.year && years.value.length) {
     const currentYear = new Date().getFullYear();
     const hasCurrentYear = years.value.includes(currentYear);
     filters.value.year = String(hasCurrentYear ? currentYear : years.value[0]);
+    pushUrl();
   }
 
   await loadSchedule();
 });
 
-// Watch pageSize changes and persist to localStorage
 watch(pageSize, (newSize) => {
   localStorage.setItem("harborwatch-page-size", String(newSize));
-  resetAndSearch(); // Re-fetch with new page size
+  resetAndSearch();
 });
 </script>
 
