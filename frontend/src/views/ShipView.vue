@@ -252,7 +252,9 @@
                 <span class="ext-icon">📡</span>
                 <div>
                   <div style="font-weight:500;">MarineTraffic</div>
-                  <div style="font-size:0.68rem; opacity:0.6;">Live AIS position &amp; vessel info</div>
+                  <div style="font-size:0.68rem; opacity:0.6;">
+                    {{ ship.metadata?.mt_url ? 'Live AIS — direct vessel page' : 'Live AIS — search results' }}
+                  </div>
                 </div>
                 <span style="margin-left:auto; opacity:0.4;">↗</span>
               </a>
@@ -264,7 +266,9 @@
                 <span class="ext-icon">🛰️</span>
                 <div>
                   <div style="font-weight:500;">VesselFinder</div>
-                  <div style="font-size:0.68rem; opacity:0.6;">Real-time ship tracking</div>
+                  <div style="font-size:0.68rem; opacity:0.6;">
+                    {{ imo ? 'Real-time tracking — direct vessel page' : 'Real-time tracking — search results' }}
+                  </div>
                 </div>
                 <span style="margin-left:auto; opacity:0.4;">↗</span>
               </a>
@@ -425,18 +429,26 @@ const shipSpecs = computed(() => {
 
 // ── External link URLs ────────────────────────────────────────────────────────
 const encodedName = computed(() => encodeURIComponent(ship.value?.name ?? ""));
-const slugName    = computed(() => (ship.value?.name ?? "").toLowerCase().replace(/\s+/g, "-"));
+const imo = computed(() => ship.value?.metadata?.imo ?? null);
 
+// MarineTraffic: use stored mt_url if available (has shipid), otherwise search
 const marineTrafficUrl = computed(() =>
   ship.value?.metadata?.mt_url
     ?? `https://www.marinetraffic.com/en/ais/index/search/all/keyword:${encodedName.value}`
 );
+
+// VesselFinder: use IMO-based URL if available (direct vessel page), otherwise name search
 const vesselFinderUrl = computed(() =>
-  `https://www.vesselfinder.com/?name=${encodedName.value}`
+  imo.value
+    ? `https://www.vesselfinder.com/vessels/details/${imo.value}`
+    : `https://www.vesselfinder.com/?name=${encodedName.value}`
 );
-const shipMapperUrl = computed(() =>
-  `https://shipmapper.com/vessels/${slugName.value}`
-);
+
+// ShipMapper: name-slug based, works reasonably well for major cruise ships
+const shipMapperUrl = computed(() => {
+  const slug = (ship.value?.name ?? "").toLowerCase().replace(/\s+/g, "-");
+  return `https://shipmapper.com/vessels/${slug}`;
+});
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function hoursInPort(arrival: string | null, departure: string | null): string {
