@@ -1,15 +1,14 @@
 services:
   # ── Deno backend API ──────────────────────────────────────────────────────
-  # Only redeploys when backend code or render.yaml changes
+  # Only redeploys when backend code changes
   - type: web
     name: harborwatch-api
     runtime: docker
     dockerfilePath: ./backend/Dockerfile
     healthCheckPath: /health
-    filter:
+    buildFilter:
       paths:
         - backend/**
-        - render.yaml
     envVars:
       - key: PORT
         value: 8000
@@ -23,16 +22,15 @@ services:
       sizeGB: 1
 
   # ── Vue frontend (static site) ────────────────────────────────────────────
-  # Only redeploys when frontend code or render.yaml changes
+  # Only redeploys when frontend code changes
   - type: web
     name: harborwatch-ui
     runtime: static
     buildCommand: cd frontend && npm install && npm run build
     staticPublishPath: ./frontend/dist
-    filter:
+    buildFilter:
       paths:
         - frontend/**
-        - render.yaml
     envVars:
       - key: VITE_API_BASE
         value: https://harborwatch-api.onrender.com
