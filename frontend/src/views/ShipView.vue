@@ -169,6 +169,23 @@
         <!-- Right: Metadata + Top ports + External links -->
         <div style="display:flex; flex-direction:column; gap:16px; min-width:0;">
 
+          <!-- Ship photo -->
+          <div v-if="ship.metadata?.image_url" class="card" style="padding:0; overflow:hidden;">
+            <img
+              :src="ship.metadata.image_url"
+              :alt="ship.name"
+              style="width:100%; display:block; max-height:220px; object-fit:cover; object-position:center;"
+              @error="(e) => (e.target as HTMLImageElement).closest('.card')!.style.display='none'"
+            />
+            <div v-if="ship.metadata.image_caption"
+              style="padding:8px 12px; font-family:var(--font-mono); font-size:0.62rem; color:var(--text-muted); line-height:1.4; border-top:1px solid var(--navy-border);">
+              📷 via Wikipedia · <a
+                :href="ship.metadata.image_caption.match(/https?:\/\/[^\s)]+/)?.[0]"
+                target="_blank" rel="noopener"
+                style="color:var(--text-muted); text-decoration:underline;">Wikimedia Commons</a>
+            </div>
+          </div>
+
           <!-- Ship specs -->
           <div v-if="ship.metadata" class="card">
             <div class="card-header" style="margin-bottom:12px;">

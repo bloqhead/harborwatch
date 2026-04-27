@@ -51,6 +51,8 @@ export interface ShipMetadata {
   homeport: string | null;
   notes: string | null;
   mt_url: string | null;
+  image_url: string | null;
+  image_caption: string | null;
 }
 
 export interface ShipPortCall {

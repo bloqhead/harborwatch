@@ -55,7 +55,9 @@ db.execute(`
     flag          TEXT,
     homeport      TEXT,
     notes         TEXT,
-    mt_url        TEXT,   -- MarineTraffic URL
+    mt_url        TEXT,
+    image_url     TEXT,   -- Wikipedia/Wikimedia Commons image
+    image_caption TEXT,   -- Attribution/caption for the image
     updated_at    TEXT DEFAULT (datetime('now'))
   );
 
@@ -302,13 +304,13 @@ router.get("/api/ship/:name", (ctx) => {
   )[0];
 
   // Metadata if available
-  const meta = db.query<[string|null,string|null,string|null,number|null,number|null,number|null,number|null,number|null,number|null,string|null,string|null,string|null]>(
+  const meta = db.query<[string|null,string|null,string|null,number|null,number|null,number|null,number|null,number|null,number|null,string|null,string|null,string|null,string|null,string|null]>(
     `SELECT imo, cruise_line, flag, gross_tonnage, passengers, crew, year_built,
-            length_m, beam_m, homeport, notes, mt_url
+            length_m, beam_m, homeport, notes, mt_url, image_url, image_caption
      FROM ship_metadata WHERE name = ?`, [name]
-  ).map(([imo,cruise_line,flag,gross_tonnage,passengers,crew,year_built,length_m,beam_m,homeport,notes,mt_url]) => ({
+  ).map(([imo,cruise_line,flag,gross_tonnage,passengers,crew,year_built,length_m,beam_m,homeport,notes,mt_url,image_url,image_caption]) => ({
     imo, cruise_line, flag, gross_tonnage, passengers, crew, year_built,
-    length_m, beam_m, homeport, notes, mt_url
+    length_m, beam_m, homeport, notes, mt_url, image_url, image_caption
   }))[0] ?? null;
 
   jsonOk(ctx, {
@@ -338,8 +340,8 @@ router.post("/api/ship-metadata", async (ctx) => {
     for (const s of ships) {
       db.query(
         `INSERT INTO ship_metadata (name, imo, cruise_line, gross_tonnage, passengers, crew,
-          year_built, length_m, beam_m, flag, homeport, notes, mt_url, updated_at)
-         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?, datetime('now'))
+          year_built, length_m, beam_m, flag, homeport, notes, mt_url, image_url, image_caption, updated_at)
+         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?, datetime('now'))
          ON CONFLICT(name) DO UPDATE SET
            imo=excluded.imo, cruise_line=excluded.cruise_line,
            gross_tonnage=excluded.gross_tonnage, passengers=excluded.passengers,
@@ -347,11 +349,13 @@ router.post("/api/ship-metadata", async (ctx) => {
            length_m=excluded.length_m, beam_m=excluded.beam_m,
            flag=excluded.flag, homeport=excluded.homeport,
            notes=excluded.notes, mt_url=excluded.mt_url,
+           image_url=excluded.image_url, image_caption=excluded.image_caption,
            updated_at=datetime('now')`,
         [s.name, s.imo??null, s.cruise_line??null, s.gross_tonnage??null,
          s.passengers??null, s.crew??null, s.year_built??null,
          s.length_m??null, s.beam_m??null, s.flag??null,
-         s.homeport??null, s.notes??null, s.mt_url??null]
+         s.homeport??null, s.notes??null, s.mt_url??null,
+         s.image_url??null, s.image_caption??null]
       );
       upserted++;
     }
