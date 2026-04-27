@@ -1,10 +1,15 @@
 services:
   # ── Deno backend API ──────────────────────────────────────────────────────
+  # Only redeploys when backend code or render.yaml changes
   - type: web
     name: harborwatch-api
     runtime: docker
     dockerfilePath: ./backend/Dockerfile
     healthCheckPath: /health
+    filter:
+      paths:
+        - backend/**
+        - render.yaml
     envVars:
       - key: PORT
         value: 8000
@@ -18,16 +23,21 @@ services:
       sizeGB: 1
 
   # ── Vue frontend (static site) ────────────────────────────────────────────
+  # Only redeploys when frontend code or render.yaml changes
   - type: web
     name: harborwatch-ui
     runtime: static
     buildCommand: cd frontend && npm install && npm run build
     staticPublishPath: ./frontend/dist
+    filter:
+      paths:
+        - frontend/**
+        - render.yaml
     envVars:
       - key: VITE_API_BASE
         value: https://harborwatch-api.onrender.com
       - key: VITE_UMAMI_SITE_ID
-        sync: false  # Set this after Umami is deployed — grab the Site ID from Umami dashboard
+        sync: false
       - key: VITE_UMAMI_URL
         value: https://harborwatch-analytics.onrender.com
     headers:
@@ -43,12 +53,6 @@ services:
         destination: /index.html
 
   # ── Umami analytics ───────────────────────────────────────────────────────
-  # Self-hosted, privacy-friendly analytics. No cookies, no GDPR headaches.
-  # After first deploy:
-  #   1. Visit https://harborwatch-analytics.onrender.com
-  #   2. Log in with admin / umami (CHANGE PASSWORD IMMEDIATELY)
-  #   3. Settings → Websites → Add Website → harborwatch-ui.onrender.com
-  #   4. Copy the Site ID, set VITE_UMAMI_SITE_ID on harborwatch-ui, redeploy
   - type: web
     name: harborwatch-analytics
     runtime: image
