@@ -106,6 +106,14 @@ function requireApiKey(ctx: any): boolean {
 }
 
 
+// ── Migrations — safely add new columns to existing tables ───────────────────
+for (const sql of [
+  `ALTER TABLE ship_metadata ADD COLUMN image_url TEXT`,
+  `ALTER TABLE ship_metadata ADD COLUMN image_caption TEXT`,
+]) {
+  try { db.execute(sql); } catch { /* column already exists, ignore */ }
+}
+
 const router = new Router();
 
 // GET /health — Render health check
@@ -343,14 +351,21 @@ router.post("/api/ship-metadata", async (ctx) => {
           year_built, length_m, beam_m, flag, homeport, notes, mt_url, image_url, image_caption, updated_at)
          VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?, datetime('now'))
          ON CONFLICT(name) DO UPDATE SET
-           imo=excluded.imo, cruise_line=excluded.cruise_line,
-           gross_tonnage=excluded.gross_tonnage, passengers=excluded.passengers,
-           crew=excluded.crew, year_built=excluded.year_built,
-           length_m=excluded.length_m, beam_m=excluded.beam_m,
-           flag=excluded.flag, homeport=excluded.homeport,
-           notes=excluded.notes, mt_url=excluded.mt_url,
-           image_url=excluded.image_url, image_caption=excluded.image_caption,
-           updated_at=datetime('now')`,
+           imo            = COALESCE(excluded.imo,            imo),
+           cruise_line    = COALESCE(excluded.cruise_line,    cruise_line),
+           gross_tonnage  = COALESCE(excluded.gross_tonnage,  gross_tonnage),
+           passengers     = COALESCE(excluded.passengers,     passengers),
+           crew           = COALESCE(excluded.crew,           crew),
+           year_built     = COALESCE(excluded.year_built,     year_built),
+           length_m       = COALESCE(excluded.length_m,       length_m),
+           beam_m         = COALESCE(excluded.beam_m,         beam_m),
+           flag           = COALESCE(excluded.flag,           flag),
+           homeport       = COALESCE(excluded.homeport,       homeport),
+           notes          = COALESCE(excluded.notes,          notes),
+           mt_url         = COALESCE(excluded.mt_url,         mt_url),
+           image_url      = COALESCE(excluded.image_url,      image_url),
+           image_caption  = COALESCE(excluded.image_caption,  image_caption),
+           updated_at     = datetime('now')`,
         [s.name, s.imo??null, s.cruise_line??null, s.gross_tonnage??null,
          s.passengers??null, s.crew??null, s.year_built??null,
          s.length_m??null, s.beam_m??null, s.flag??null,
