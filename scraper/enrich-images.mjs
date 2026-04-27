@@ -69,6 +69,9 @@ const WIKI_ARTICLES = {
   "SEVEN SEAS EXPLORER":          "Seven Seas Explorer",
 };
 
+// Larger image size — request 800px wide thumbnail
+const IMG_WIDTH = 800;
+
 // ── Direct Wikimedia Commons image URLs ───────────────────────────────────────
 // For ships with no Wikipedia article, use a verified Wikimedia Commons image.
 // All images CC-licensed. Sourced from commons.wikimedia.org.
