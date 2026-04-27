@@ -335,6 +335,71 @@ router.get("/api/ship/:name", (ctx) => {
   });
 });
 
+// POST /api/ship-image — upload a ship image file, store on disk (requires API key)
+router.post("/api/ship-image", async (ctx) => {
+  if (!requireApiKey(ctx)) return;
+
+  const body = await ctx.request.body.json();
+  const { name, imageData, mimeType, caption } = body;
+
+  if (!name || !imageData) return jsonErr(ctx, 400, "name and imageData required");
+
+  // Ensure images directory exists
+  const imagesDir = DB_PATH.replace("cruise_data.db", "images");
+  try { await Deno.mkdir(imagesDir, { recursive: true }); } catch { /* already exists */ }
+
+  // Sanitise filename: uppercase ship name, spaces to underscores
+  const ext = mimeType?.includes("png") ? "png" : "jpg";
+  const filename = name.toUpperCase().replace(/\s+/g, "_") + "." + ext;
+  const filepath = `${imagesDir}/${filename}`;
+
+  // Decode base64 and write to disk
+  try {
+    const bytes = Uint8Array.from(atob(imageData), c => c.charCodeAt(0));
+    await Deno.writeFile(filepath, bytes);
+  } catch (e) {
+    return jsonErr(ctx, 500, `Failed to write image: ${String(e)}`);
+  }
+
+  // Store local URL in ship_metadata (overwriting any previous image_url)
+  const localUrl = `/api/images/${filename}`;
+  db.query(
+    `INSERT INTO ship_metadata (name, image_url, image_caption, updated_at)
+     VALUES (?, ?, ?, datetime('now'))
+     ON CONFLICT(name) DO UPDATE SET
+       image_url     = excluded.image_url,
+       image_caption = COALESCE(excluded.image_caption, image_caption),
+       updated_at    = datetime('now')`,
+    [name.toUpperCase(), localUrl, caption ?? null]
+  );
+
+  jsonOk(ctx, { success: true, filename, url: localUrl });
+});
+
+// GET /api/images/:filename — serve locally stored ship images
+router.get("/api/images/:filename", async (ctx) => {
+  const filename = ctx.params.filename ?? "";
+
+  // Basic path traversal protection
+  if (filename.includes("..") || filename.includes("/")) {
+    return jsonErr(ctx, 400, "Invalid filename");
+  }
+
+  const imagesDir = DB_PATH.replace("cruise_data.db", "images");
+  const filepath = `${imagesDir}/${filename}`;
+
+  try {
+    const file = await Deno.readFile(filepath);
+    const ext = filename.split(".").pop()?.toLowerCase();
+    const contentType = ext === "png" ? "image/png" : "image/jpeg";
+    ctx.response.headers.set("Content-Type", contentType);
+    ctx.response.headers.set("Cache-Control", "public, max-age=31536000, immutable");
+    ctx.response.body = file;
+  } catch {
+    jsonErr(ctx, 404, "Image not found");
+  }
+});
+
 // POST /api/ship-metadata — upsert metadata for one or more ships (requires API key)
 router.post("/api/ship-metadata", async (ctx) => {
   if (!requireApiKey(ctx)) return;

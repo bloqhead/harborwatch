@@ -131,18 +131,41 @@ async function fetchWikiImage(articleTitle) {
   };
 }
 
-async function updateShipImage(apiBase, apiKey, shipName, imageUrl, imageCaption, dryRun) {
+async function downloadAndStoreImage(apiBase, apiKey, shipName, imageUrl, caption, dryRun) {
   if (dryRun) return true;
 
-  const resp = await fetch(`${apiBase}/api/ship-metadata`, {
+  // Fetch the image from Wikimedia
+  let imageResp;
+  try {
+    imageResp = await fetch(imageUrl, {
+      headers: {
+        "User-Agent": "Harborwatch/1.0 (https://github.com/bloqhead/harborwatch)",
+        "Referer": "https://en.wikipedia.org/",
+      },
+    });
+    if (!imageResp.ok) throw new Error(`HTTP ${imageResp.status}`);
+  } catch (e) {
+    console.log(`\n    ⚠️  Image fetch failed: ${e.message}`);
+    return false;
+  }
+
+  const mimeType = imageResp.headers.get("content-type") ?? "image/jpeg";
+  const arrayBuf = await imageResp.arrayBuffer();
+  const bytes = new Uint8Array(arrayBuf);
+
+  // Encode as base64
+  let binary = "";
+  for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i]);
+  const imageData = btoa(binary);
+
+  // POST to API
+  const resp = await fetch(`${apiBase}/api/ship-image`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       ...(apiKey ? { "x-api-key": apiKey } : {}),
     },
-    body: JSON.stringify({
-      ships: [{ name: shipName, image_url: imageUrl, image_caption: imageCaption }],
-    }),
+    body: JSON.stringify({ name: shipName, imageData, mimeType, caption }),
   });
 
   if (resp.status === 401) {
@@ -150,7 +173,14 @@ async function updateShipImage(apiBase, apiKey, shipName, imageUrl, imageCaption
     process.exit(1);
   }
 
-  return resp.ok;
+  if (!resp.ok) {
+    const err = await resp.json().catch(() => ({}));
+    console.log(`\n    ⚠️  API error: ${err.error ?? resp.status}`);
+    return false;
+  }
+
+  const result = await resp.json();
+  return result.success ?? false;
 }
 
 // ── CLI ───────────────────────────────────────────────────────────────────────
@@ -177,8 +207,9 @@ for (const [shipName, articleTitle] of Object.entries(WIKI_ARTICLES)) {
     // Check for a direct Wikimedia Commons image
     const direct = DIRECT_IMAGES[shipName];
     if (direct) {
-      const ok = await updateShipImage(apiBase, apiKey, shipName, direct.url, direct.caption, dryRun);
-      console.log(ok ? `✅ direct Wikimedia Commons image` : `❌ API write failed`);
+      process.stdout.write("downloading... ");
+      const ok = await downloadAndStoreImage(apiBase, apiKey, shipName, direct.url, direct.caption, dryRun);
+      console.log(ok ? `✅ stored locally` : `❌ failed`);
       ok ? found++ : errors++;
     } else {
       console.log("⏭  no Wikipedia article");
@@ -196,14 +227,15 @@ for (const [shipName, articleTitle] of Object.entries(WIKI_ARTICLES)) {
       continue;
     }
 
-    const ok = await updateShipImage(apiBase, apiKey, shipName, result.imageUrl, result.caption, dryRun);
+    process.stdout.write("downloading... ");
+    const ok = await downloadAndStoreImage(apiBase, apiKey, shipName, result.imageUrl, result.caption, dryRun);
 
     if (ok) {
       console.log(`✅ ${result.articleTitle}`);
       if (dryRun) console.log(`      → ${result.imageUrl}`);
       found++;
     } else {
-      console.log(`❌ API write failed`);
+      console.log(`❌ failed`);
       errors++;
     }
 

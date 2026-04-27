@@ -172,7 +172,7 @@
           <!-- Ship photo -->
           <div v-if="ship.metadata?.image_url" class="card" style="padding:0; overflow:hidden;">
             <img
-              :src="ship.metadata.image_url"
+              :src="imageUrl"
               :alt="ship.name"
               style="width:100%; display:block; max-height:220px; object-fit:cover; object-position:center;"
             />
@@ -443,6 +443,17 @@ const shipSpecs = computed(() => {
     { label: "Beam",       value: fmt(m.beam_m, " m") },
     { label: "Homeport",   value: m.homeport },
   ].filter(s => s.value != null) as { label: string; value: string }[];
+});
+
+// ── Image URL ─────────────────────────────────────────────────────────────────
+const API_BASE = import.meta.env.VITE_API_BASE ?? "";
+const imageUrl = computed(() => {
+  const url = ship.value?.metadata?.image_url;
+  if (!url) return null;
+  // Local path like /api/images/NOORDAM.jpg — prepend API base
+  if (url.startsWith("/api/")) return `${API_BASE}${url}`;
+  // Already a full URL (old Wikimedia URLs) — use as-is
+  return url;
 });
 
 // ── External link URLs ────────────────────────────────────────────────────────
