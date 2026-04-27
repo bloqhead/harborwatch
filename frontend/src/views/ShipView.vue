@@ -62,7 +62,7 @@
       <div class="ship-detail-grid">
 
         <!-- Left: Timeline + Voyage -->
-        <div>
+        <div style="min-width:0;">
           <!-- Stat cards -->
           <div class="stat-grid" style="margin-bottom:20px; grid-template-columns:repeat(auto-fill, minmax(150px, 1fr));">
             <div class="stat-card">
@@ -167,7 +167,7 @@
         </div>
 
         <!-- Right: Metadata + Top ports + External links -->
-        <div style="display:flex; flex-direction:column; gap:16px;">
+        <div style="display:flex; flex-direction:column; gap:16px; min-width:0;">
 
           <!-- Ship specs -->
           <div v-if="ship.metadata" class="card">
@@ -175,10 +175,12 @@
               <h3>Ship Details</h3>
             </div>
             <div style="display:flex; flex-direction:column; gap:8px;">
-              <div v-for="spec in shipSpecs" :key="spec.label" style="display:flex; justify-content:space-between; align-items:baseline; padding:5px 0; border-bottom:1px solid rgba(30,64,112,0.3);">
-                <span style="font-family:var(--font-mono); font-size:0.68rem; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.08em;">{{ spec.label }}</span>
-                <span style="font-family:var(--font-mono); font-size:0.78rem; color:var(--text-primary);">{{ spec.value }}</span>
-              </div>
+              <div v-for="spec in shipSpecs" :key="spec.label"
+              class="spec-row"
+              style="display:flex; justify-content:space-between; align-items:baseline; padding:5px 0; border-bottom:1px solid rgba(30,64,112,0.3); gap:8px;">
+              <span style="font-family:var(--font-mono); font-size:0.68rem; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.08em; flex-shrink:0;">{{ spec.label }}</span>
+              <span class="spec-value" style="font-family:var(--font-mono); font-size:0.78rem; color:var(--text-primary); text-align:right; word-break:break-word;">{{ spec.value }}</span>
+            </div>
             </div>
           </div>
 
@@ -498,6 +500,9 @@ onMounted(async () => {
   grid-template-columns: 1fr 320px;
   gap: 20px;
   align-items: start;
+  /* Prevent grid from overflowing its container */
+  min-width: 0;
+  width: 100%;
 }
 
 /* Collapse to single column on mobile */
@@ -506,9 +511,31 @@ onMounted(async () => {
     grid-template-columns: 1fr;
   }
 
-  /* On mobile, sidebar moves below timeline — reorder so stats show first */
+  /* Sidebar moves above timeline on mobile */
   .ship-detail-grid > div:last-child {
     order: -1;
+  }
+
+  /* Ship name can be long — allow wrapping */
+  h1 {
+    font-size: 1.3rem !important;
+    word-break: break-word;
+  }
+
+  /* Spec rows: let values wrap instead of overflowing */
+  .spec-row {
+    flex-wrap: wrap;
+    gap: 2px;
+  }
+
+  .spec-value {
+    text-align: left !important;
+  }
+
+  /* External link buttons — tighter on mobile */
+  .external-link-btn {
+    padding: 8px 10px;
+    font-size: 0.72rem;
   }
 }
 
@@ -525,6 +552,9 @@ onMounted(async () => {
   font-family: var(--font-mono);
   font-size: 0.78rem;
   transition: border-color 0.15s, background 0.15s;
+  /* Prevent button from overflowing */
+  min-width: 0;
+  overflow: hidden;
 }
 .external-link-btn:hover {
   border-color: var(--gold-dim);

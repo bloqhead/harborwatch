@@ -759,6 +759,10 @@ tr:hover .ship-filter-btn { opacity: 1; }
     padding: 16px 12px;
   }
 
+  .container {
+    padding: 0;
+  }
+
   /* Typography scaling */
   h1 {
     font-size: 1.6rem;
