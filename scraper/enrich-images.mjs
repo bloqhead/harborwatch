@@ -134,18 +134,40 @@ async function fetchWikiImage(articleTitle) {
 async function downloadAndStoreImage(apiBase, apiKey, shipName, imageUrl, caption, dryRun) {
   if (dryRun) return true;
 
-  // Fetch the image from Wikimedia
+  // Fetch the image from Wikimedia with retry on 429
   let imageResp;
-  try {
-    imageResp = await fetch(imageUrl, {
-      headers: {
-        "User-Agent": "Harborwatch/1.0 (https://github.com/bloqhead/harborwatch)",
-        "Referer": "https://en.wikipedia.org/",
-      },
-    });
-    if (!imageResp.ok) throw new Error(`HTTP ${imageResp.status}`);
-  } catch (e) {
-    console.log(`\n    ⚠️  Image fetch failed: ${e.message}`);
+  const maxRetries = 4;
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      imageResp = await fetch(imageUrl, {
+        headers: {
+          "User-Agent": "Harborwatch/1.0 (https://github.com/bloqhead/harborwatch)",
+          "Referer": "https://en.wikipedia.org/",
+        },
+      });
+
+      if (imageResp.status === 429) {
+        const retryAfter = parseInt(imageResp.headers.get("retry-after") ?? "10");
+        const wait = (retryAfter + 2) * 1000;
+        process.stdout.write(`\n    ⏳ Rate limited, waiting ${retryAfter + 2}s... `);
+        await new Promise(r => setTimeout(r, wait));
+        continue; // retry
+      }
+
+      if (!imageResp.ok) throw new Error(`HTTP ${imageResp.status}`);
+      break; // success
+
+    } catch (e) {
+      if (attempt === maxRetries) {
+        console.log(`\n    ⚠️  Image fetch failed: ${e.message}`);
+        return false;
+      }
+      await new Promise(r => setTimeout(r, 3000 * (attempt + 1)));
+    }
+  }
+
+  if (!imageResp?.ok) {
+    console.log(`\n    ⚠️  Image fetch failed after retries`);
     return false;
   }
 
@@ -185,23 +207,46 @@ async function downloadAndStoreImage(apiBase, apiKey, shipName, imageUrl, captio
 
 // ── CLI ───────────────────────────────────────────────────────────────────────
 const args = process.argv.slice(2);
-let apiBase = "http://localhost:8000", apiKey, dryRun = false;
+let apiBase = "http://localhost:8000", apiKey, dryRun = false, skipExisting = false;
 for (let i = 0; i < args.length; i++) {
-  if (args[i] === "--api")     apiBase = args[++i];
-  if (args[i] === "--key")     apiKey  = args[++i];
-  if (args[i] === "--dry-run") dryRun  = true;
+  if (args[i] === "--api")           apiBase       = args[++i];
+  if (args[i] === "--key")           apiKey        = args[++i];
+  if (args[i] === "--dry-run")       dryRun        = true;
+  if (args[i] === "--skip-existing") skipExisting  = true;
 }
 apiKey = apiKey ?? process.env.HARBORWATCH_API_KEY;
 
 console.log(`⚓ Harborwatch Ship Image Enricher`);
 console.log(`   API:     ${apiBase}`);
 console.log(`   Auth:    ${apiKey ? "✅ key set" : "none (local dev)"}`);
-console.log(`   Mode:    ${dryRun ? "DRY RUN (no writes)" : "live"}\n`);
+console.log(`   Mode:    ${dryRun ? "DRY RUN (no writes)" : "live"}${skipExisting ? " + skip existing" : ""}\n`);
+
+// Fetch existing image URLs so we can skip already-stored ships
+let existingImages = new Set();
+if (skipExisting) {
+  try {
+    const r = await fetch(`${apiBase}/api/ships?meta=1`);
+    const data = await r.json();
+    for (const s of (data.ships ?? [])) {
+      if (s.image_url?.startsWith("/api/images/")) existingImages.add(s.name);
+    }
+    console.log(`   Skipping ${existingImages.size} ships with local images already stored\n`);
+  } catch (e) {
+    console.warn(`   ⚠️  Could not fetch existing ships: ${e.message}\n`);
+  }
+}
 
 let found = 0, missing = 0, skipped = 0, errors = 0;
 
 for (const [shipName, articleTitle] of Object.entries(WIKI_ARTICLES)) {
   process.stdout.write(`  ${shipName.padEnd(30)}`);
+
+  // Skip ships that already have a locally stored image
+  if (skipExisting && existingImages.has(shipName)) {
+    console.log("⏭  already stored");
+    skipped++;
+    continue;
+  }
 
   if (!articleTitle) {
     // Check for a direct Wikimedia Commons image
@@ -239,8 +284,8 @@ for (const [shipName, articleTitle] of Object.entries(WIKI_ARTICLES)) {
       errors++;
     }
 
-    // Be polite to Wikipedia — 100ms between requests
-    await new Promise(r => setTimeout(r, 100));
+    // Be polite to Wikimedia — longer delay to avoid rate limiting
+    await new Promise(r => setTimeout(r, 1500));
 
   } catch (e) {
     console.log(`💥 ${e.message}`);
