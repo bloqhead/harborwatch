@@ -35,9 +35,9 @@ const WIKI_ARTICLES = {
   // Princess Cruises
   "CORAL PRINCESS":       "Coral Princess",
   "DISCOVERY PRINCESS":   "Discovery Princess",
-  "EMERALD PRINCESS":     "Emerald Princess (ship)",
+  "EMERALD PRINCESS":     "Emerald Princess",
   "GRAND PRINCESS":       "Grand Princess",
-  "ISLAND PRINCESS":      "Island Princess (ship)",
+  "ISLAND PRINCESS":      "MS Island Princess (2002)",
   "RUBY PRINCESS":        "Ruby Princess (ship)",
   "STAR PRINCESS":        "Star Princess (ship)",
 
@@ -61,16 +61,33 @@ const WIKI_ARTICLES = {
   "CELEBRITY SOLSTICE":   "Celebrity Solstice",
 
   // Expedition / small ship
-  "NATIONAL GEOGRAPHIC QUEST":   "National Geographic Quest",
-  "NATIONAL GEOGRAPHIC VENTURE":  null,  // no Wikipedia article
-  "NG SEA BIRD":          null,  // no Wikipedia article
-  "NG SEA LION":          null,  // no Wikipedia article
-  "ROALD AMUNDSEN":       "MS Roald Amundsen",
-  "SEVEN SEAS EXPLORER":  "Seven Seas Explorer",
+  "NATIONAL GEOGRAPHIC QUEST":    "National Geographic Quest",
+  "NATIONAL GEOGRAPHIC VENTURE":  null,  // No Wikipedia article — handled via DIRECT_IMAGES below
+  "NG SEA BIRD":                  null,  // No Wikipedia article — handled via DIRECT_IMAGES below
+  "NG SEA LION":                  null,  // No Wikipedia article — handled via DIRECT_IMAGES below
+  "ROALD AMUNDSEN":               "MS Roald Amundsen",
+  "SEVEN SEAS EXPLORER":          "Seven Seas Explorer",
 };
 
-// Larger image size — request 800px wide thumbnail
-const IMG_WIDTH = 800;
+// ── Direct Wikimedia Commons image URLs ───────────────────────────────────────
+// For ships with no Wikipedia article, use a verified Wikimedia Commons image.
+// All images CC-licensed. Sourced from commons.wikimedia.org.
+const DIRECT_IMAGES = {
+  "NATIONAL GEOGRAPHIC VENTURE": {
+    url: "https://upload.wikimedia.org/wikipedia/commons/thumb/b/b7/National_Geographic_Venture_in_Sitka%2C_Alaska_%2842831774292%29.jpg/800px-National_Geographic_Venture_in_Sitka%2C_Alaska_%2842831774292%29.jpg",
+    caption: "National Geographic Venture in Sitka, Alaska — Wikimedia Commons (CC BY 2.0)",
+  },
+  "NG SEA BIRD": {
+    url: "https://upload.wikimedia.org/wikipedia/commons/thumb/4/4c/National_Geographic_Sea_Bird_%2841424013854%29.jpg/800px-National_Geographic_Sea_Bird_%2841424013854%29.jpg",
+    caption: "National Geographic Sea Bird — Wikimedia Commons (CC BY 2.0)",
+  },
+  "NG SEA LION": {
+    url: "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5e/National_Geographic_Sea_Lion_at_Friday_Harbor_2018.jpg/800px-National_Geographic_Sea_Lion_at_Friday_Harbor_2018.jpg",
+    caption: "National Geographic Sea Lion at Friday Harbor — Wikimedia Commons (CC BY-SA 4.0)",
+  },
+};
+
+
 
 async function fetchWikiImage(articleTitle) {
   const encoded = encodeURIComponent(articleTitle);
@@ -154,8 +171,16 @@ for (const [shipName, articleTitle] of Object.entries(WIKI_ARTICLES)) {
   process.stdout.write(`  ${shipName.padEnd(30)}`);
 
   if (!articleTitle) {
-    console.log("⏭  no Wikipedia article");
-    skipped++;
+    // Check for a direct Wikimedia Commons image
+    const direct = DIRECT_IMAGES[shipName];
+    if (direct) {
+      const ok = await updateShipImage(apiBase, apiKey, shipName, direct.url, direct.caption, dryRun);
+      console.log(ok ? `✅ direct Wikimedia Commons image` : `❌ API write failed`);
+      ok ? found++ : errors++;
+    } else {
+      console.log("⏭  no Wikipedia article");
+      skipped++;
+    }
     continue;
   }
 
