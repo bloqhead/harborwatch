@@ -169,20 +169,32 @@
         <!-- Right: Metadata + Top ports + External links -->
         <div style="display:flex; flex-direction:column; gap:16px; min-width:0;">
 
-          <!-- Ship photo -->
-          <div v-if="ship.metadata?.image_url" class="card" style="padding:0; overflow:hidden;">
-            <img
-              :src="imageUrl"
-              :alt="ship.name"
-              style="width:100%; display:block; max-height:220px; object-fit:cover; object-position:center;"
-            />
-            <div v-if="ship.metadata.image_caption"
-              style="padding:8px 12px; font-family:var(--font-mono); font-size:0.62rem; color:var(--text-muted); line-height:1.4; border-top:1px solid var(--navy-border);">
-              📷 via <a
-                href="https://commons.wikimedia.org"
-                target="_blank" rel="noopener"
-                style="color:var(--text-muted); text-decoration:underline;">Wikimedia Commons</a>
-            </div>
+          <!-- Ship photo or placeholder -->
+          <div class="card" style="padding:0; overflow:hidden;">
+            <template v-if="ship.metadata?.image_url">
+              <img
+                :src="imageUrl"
+                :alt="ship.name"
+                style="width:100%; display:block; max-height:220px; object-fit:cover; object-position:center;"
+              />
+              <div v-if="ship.metadata.image_caption"
+                style="padding:8px 12px; font-family:var(--font-mono); font-size:0.62rem; color:var(--text-muted); line-height:1.4; border-top:1px solid var(--navy-border);">
+                📷 via <a
+                  href="https://commons.wikimedia.org"
+                  target="_blank" rel="noopener"
+                  style="color:var(--text-muted); text-decoration:underline;">Wikimedia Commons</a>
+              </div>
+            </template>
+            <template v-else>
+              <div style="height:160px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:10px; background:var(--surface-2);">
+                <svg width="48" height="48" viewBox="0 0 48 48" fill="none" opacity="0.3">
+                  <path d="M6 36L16 22l8 10 6-7 12 14H6z" stroke="var(--gold)" stroke-width="1.5" stroke-linejoin="round"/>
+                  <circle cx="34" cy="16" r="4" stroke="var(--gold)" stroke-width="1.5"/>
+                  <rect x="3" y="8" width="42" height="32" rx="3" stroke="var(--gold)" stroke-width="1.5"/>
+                </svg>
+                <span style="font-family:var(--font-mono); font-size:0.68rem; color:var(--text-muted); letter-spacing:0.08em; text-transform:uppercase;">No photo yet</span>
+              </div>
+            </template>
           </div>
 
           <!-- Ship specs -->
