@@ -171,11 +171,12 @@
 
           <!-- Ship photo or placeholder -->
           <div class="card" style="padding:0; overflow:hidden;">
-            <template v-if="ship.metadata?.image_url">
+            <template v-if="ship.metadata?.image_url && !imageError">
               <img
                 :src="imageUrl"
                 :alt="ship.name"
                 style="width:100%; display:block; max-height:220px; object-fit:cover; object-position:center;"
+                @error="imageError = true"
               />
               <div v-if="ship.metadata.image_caption"
                 style="padding:8px 12px; font-family:var(--font-mono); font-size:0.62rem; color:var(--text-muted); line-height:1.4; border-top:1px solid var(--navy-border);">
@@ -340,6 +341,7 @@ const { events } = useAnalytics();
 const ship = ref<ShipDetail | null>(null);
 const notFound = ref(false);
 const copied = ref(false);
+const imageError = ref(false);
 const selectedYear = ref("");
 const timelineMonth = ref<number | "">("");
 const timelinePage = ref(1);
@@ -377,6 +379,7 @@ async function copyUrl() {
 // ── Data ──────────────────────────────────────────────────────────────────────
 async function loadShip() {
   notFound.value = false;
+  imageError.value = false;
   const data = await api.getShipDetail(shipName.value, selectedYear.value || undefined);
   if (!data) { notFound.value = true; return; }
   ship.value = data;
