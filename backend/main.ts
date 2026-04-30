@@ -22,7 +22,9 @@ db.execute(`
     departure_time TEXT,
     berth_code     TEXT,
     day_of_week    TEXT,
-    created_at     TEXT DEFAULT (datetime('now'))
+    created_at     TEXT DEFAULT (datetime('now')),
+    last_modified  TEXT,
+    previous_values TEXT   -- JSON: {arrival_time, departure_time, berth_code} before last change
   );
 
   CREATE INDEX IF NOT EXISTS idx_year      ON port_calls(year);
@@ -110,6 +112,8 @@ function requireApiKey(ctx: any): boolean {
 for (const sql of [
   `ALTER TABLE ship_metadata ADD COLUMN image_url TEXT`,
   `ALTER TABLE ship_metadata ADD COLUMN image_caption TEXT`,
+  `ALTER TABLE port_calls ADD COLUMN last_modified TEXT`,
+  `ALTER TABLE port_calls ADD COLUMN previous_values TEXT`,
 ]) {
   try { db.execute(sql); } catch { /* column already exists, ignore */ }
 }
@@ -193,17 +197,21 @@ router.get("/api/schedule", (ctx) => {
 
   const total = db.query<[number]>(`SELECT COUNT(*) FROM port_calls ${where}`, vals)[0][0];
 
-  const rows = db.query<[number,number,string,string,string,string,string,string|null,string|null,string|null,string]>(
+  const rows = db.query<[number,number,string,string,string,string,string,string|null,string|null,string|null,string,string|null,string|null]>(
     `SELECT id, year, port_code, port_name, ship_name, date_str, date_iso,
-            arrival_time, departure_time, berth_code, day_of_week
+            arrival_time, departure_time, berth_code, day_of_week,
+            last_modified, previous_values
      FROM port_calls ${where}
      ORDER BY date_iso ASC, arrival_time ASC
      LIMIT ? OFFSET ?`,
     [...vals, limit, offset]
   ).map(([id,year,port_code,port_name,ship_name,date_str,date_iso,
-          arrival_time,departure_time,berth_code,day_of_week]) => ({
+          arrival_time,departure_time,berth_code,day_of_week,
+          last_modified,previous_values]) => ({
     id, year, port_code, port_name, ship_name, date_str, date_iso,
-    arrival_time, departure_time, berth_code, day_of_week
+    arrival_time, departure_time, berth_code, day_of_week,
+    last_modified: last_modified ?? null,
+    previous_values: previous_values ? JSON.parse(previous_values) : null,
   }));
 
   jsonOk(ctx, { data: rows, pagination: { page, limit, total, pages: Math.ceil(total / limit) } });
@@ -447,6 +455,37 @@ router.post("/api/ship-metadata", async (ctx) => {
   }
 });
 
+// GET /api/changes — recently modified or inserted port calls
+// ?days=7 (default) — how far back to look
+// ?year=2026 — optional year filter
+router.get("/api/changes", (ctx) => {
+  const p = ctx.request.url.searchParams;
+  const days = parseInt(p.get("days") ?? "7");
+  const year = p.get("year");
+
+  const yearCond = year ? "AND year = ?" : "";
+  const vals: (string | number)[] = year ? [days, parseInt(year)] : [days];
+
+  const rows = db.query<[number,number,string,string,string,string,string,string|null,string|null,string|null,string,string,string|null]>(
+    `SELECT id, year, port_code, port_name, ship_name, date_str, date_iso,
+            arrival_time, departure_time, berth_code, day_of_week,
+            last_modified, previous_values
+     FROM port_calls
+     WHERE last_modified >= datetime('now', '-' || ? || ' days') ${yearCond}
+     ORDER BY last_modified DESC`,
+    vals
+  ).map(([id,year,port_code,port_name,ship_name,date_str,date_iso,
+          arrival_time,departure_time,berth_code,day_of_week,
+          last_modified,previous_values]) => ({
+    id, year, port_code, port_name, ship_name, date_str, date_iso,
+    arrival_time, departure_time, berth_code, day_of_week,
+    last_modified,
+    previous_values: previous_values ? JSON.parse(previous_values) : null,
+  }));
+
+  jsonOk(ctx, { changes: rows, days, count: rows.length });
+});
+
 // GET /api/port/:code — detail for a single port
 router.get("/api/port/:code", (ctx) => {
   const code = ctx.params.code?.toUpperCase();
@@ -516,12 +555,18 @@ router.post("/api/import", async (ctx) => {
           (r.berth_code     ?? null) !== oldBerth;
 
         if (changed) {
+          const prev = JSON.stringify({
+            arrival_time:   oldArrival,
+            departure_time: oldDeparture,
+            berth_code:     oldBerth,
+          });
           db.query(
             `UPDATE port_calls
-             SET arrival_time=?, departure_time=?, berth_code=?, date_str=?
+             SET arrival_time=?, departure_time=?, berth_code=?, date_str=?,
+                 last_modified=datetime('now'), previous_values=?
              WHERE id=?`,
             [r.arrival_time ?? null, r.departure_time ?? null,
-             r.berth_code ?? null, r.date_str, id]
+             r.berth_code ?? null, r.date_str, prev, id]
           );
           updated++;
         } else {

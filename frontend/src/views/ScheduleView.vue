@@ -34,6 +34,46 @@
       </div>
     </div>
 
+    <!-- Recent changes banner -->
+    <div v-if="recentChanges.length" class="changes-banner" style="margin-bottom:16px;">
+      <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;">
+        <div style="display:flex; align-items:center; gap:10px;">
+          <span style="font-size:1rem;">🔔</span>
+          <div>
+            <span style="font-family:var(--font-mono); font-size:0.78rem; color:var(--gold); font-weight:500;">
+              {{ recentChanges.length }} schedule update{{ recentChanges.length !== 1 ? 's' : '' }}
+            </span>
+            <span style="font-family:var(--font-mono); font-size:0.72rem; color:var(--text-muted);"> in the last {{ CHANGE_DAYS }} days</span>
+          </div>
+        </div>
+        <button class="btn btn-ghost" style="font-size:0.7rem;" @click="showChanges = !showChanges">
+          {{ showChanges ? 'Hide' : 'Show' }} changes
+        </button>
+      </div>
+
+      <!-- Change details -->
+      <div v-if="showChanges" style="margin-top:12px; padding-top:12px; border-top:1px solid var(--gold-dim);">
+        <div v-for="c in recentChanges" :key="c.id"
+          style="display:flex; align-items:baseline; gap:10px; padding:5px 0; border-bottom:1px solid rgba(30,64,112,0.3); flex-wrap:wrap;">
+          <span style="font-family:var(--font-mono); font-size:0.72rem; color:var(--text-muted); white-space:nowrap;">{{ formatDate(c.date_iso) }}</span>
+          <span class="badge badge-port" style="font-size:0.65rem;">{{ c.port_code }}</span>
+          <span style="font-family:var(--font-mono); font-size:0.75rem; color:var(--text-primary); flex:1;">{{ c.ship_name }}</span>
+          <span style="font-family:var(--font-mono); font-size:0.7rem; color:var(--text-muted);">
+            <template v-for="(diff, field) in changeDiff(c)" :key="field">
+              <span style="color:var(--text-muted);">{{ fieldLabel(field) }}: </span>
+              <span style="color:var(--red-alert); text-decoration:line-through;">{{ diff.from ?? '—' }}</span>
+              <span style="color:var(--text-muted);"> → </span>
+              <span style="color:var(--green-ok);">{{ diff.to ?? '—' }}</span>
+              <span style="margin: 0 4px;">·</span>
+            </template>
+          </span>
+          <span style="font-family:var(--font-mono); font-size:0.65rem; color:var(--text-muted); white-space:nowrap;">
+            {{ timeAgo(c.last_modified!) }}
+          </span>
+        </div>
+      </div>
+    </div>
+
     <!-- Filters card -->
     <div class="card filters-card mb-16">
       <button class="mobile-filter-toggle" @click="filtersExpanded = !filtersExpanded">
@@ -135,8 +175,13 @@
               </tr>
             </thead>
             <tbody>
-              <tr v-for="row in schedule.data" :key="row.id" class="data-row" @click="clickRow(row)">
-                <td style="white-space:nowrap;">{{ formatDate(row.date_iso) }}</td>
+              <tr v-for="row in schedule.data" :key="row.id" class="data-row"
+                :class="{ 'row-changed': isRecentlyChanged(row) }"
+                @click="clickRow(row)">
+                <td style="white-space:nowrap;">
+                  {{ formatDate(row.date_iso) }}
+                  <span v-if="isRecentlyChanged(row)" class="change-dot" :title="changeTooltip(row)">●</span>
+                </td>
                 <td style="color:var(--text-muted);">{{ row.day_of_week.slice(0,3) }}</td>
                 <td v-if="!filters.year"><span class="badge badge-year">{{ row.year }}</span></td>
                 <td>
@@ -434,7 +479,60 @@ function debouncedSearch() {
   debounceTimer = setTimeout(resetAndSearch, 400);
 }
 
-function setYear(y: string) { filters.value.year = y; resetAndSearch(); }
+function setYear(y: string) { filters.value.year = y; resetAndSearch(); loadRecentChanges(); }
+
+// ── Change tracking ───────────────────────────────────────────────────────────
+const CHANGE_DAYS = 14;
+const recentChanges = ref<PortCall[]>([]);
+const showChanges = ref(false);
+
+async function loadRecentChanges() {
+  const qs = new URLSearchParams({ days: String(CHANGE_DAYS) });
+  if (filters.value.year) qs.set("year", filters.value.year);
+  const resp = await fetch(`${import.meta.env.VITE_API_BASE ?? ""}/api/changes?${qs}`)
+    .then(r => r.json()).catch(() => ({ changes: [] }));
+  recentChanges.value = resp.changes ?? [];
+}
+
+function isRecentlyChanged(row: PortCall): boolean {
+  if (!row.last_modified) return false;
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - CHANGE_DAYS);
+  return new Date(row.last_modified + "Z") > cutoff;
+}
+
+function changeDiff(row: PortCall) {
+  if (!row.previous_values) return {};
+  const diffs: Record<string, { from: string | null; to: string | null }> = {};
+  const fields = ["arrival_time", "departure_time", "berth_code"] as const;
+  for (const f of fields) {
+    const prev = row.previous_values[f] ?? null;
+    const curr = row[f] ?? null;
+    if (prev !== curr) diffs[f] = { from: prev, to: curr };
+  }
+  return diffs;
+}
+
+function changeTooltip(row: PortCall): string {
+  const diffs = changeDiff(row);
+  const lines = Object.entries(diffs).map(([f, d]) =>
+    `${fieldLabel(f)}: ${d.from ?? "—"} → ${d.to ?? "—"}`
+  );
+  const ago = row.last_modified ? timeAgo(row.last_modified) : "";
+  return [`Updated ${ago}`, ...lines].join("\n");
+}
+
+function fieldLabel(field: string): string {
+  return { arrival_time: "Arrival", departure_time: "Departure", berth_code: "Berth" }[field] ?? field;
+}
+
+function timeAgo(isoStr: string): string {
+  const ms = Date.now() - new Date(isoStr + "Z").getTime();
+  const days = Math.floor(ms / 86400000);
+  if (days === 0) return "today";
+  if (days === 1) return "yesterday";
+  return `${days} days ago`;
+}
 
 // ── Data loading ──────────────────────────────────────────────────────────
 async function loadSchedule() {
@@ -532,6 +630,7 @@ onMounted(async () => {
   }
 
   await loadSchedule();
+  await loadRecentChanges();
 });
 
 watch(pageSize, (newSize) => {
@@ -546,6 +645,29 @@ watch(pageSize, (newSize) => {
 
 .data-row { cursor: default; }
 .data-row:hover .ship-name { color: var(--gold); }
+
+.row-changed { background: rgba(200, 168, 75, 0.04); }
+.row-changed:hover { background: rgba(200, 168, 75, 0.08) !important; }
+
+.change-dot {
+  font-size: 0.5rem;
+  color: var(--gold);
+  vertical-align: super;
+  margin-left: 3px;
+  cursor: help;
+  animation: pulse-dot 2s ease-in-out infinite;
+}
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+.changes-banner {
+  background: rgba(200, 168, 75, 0.07);
+  border: 1px solid var(--gold-dim);
+  border-radius: var(--radius-md);
+  padding: 14px 18px;
+}
 
 .view-mode-bar {
   display: flex;

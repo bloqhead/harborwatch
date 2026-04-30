@@ -15,6 +15,12 @@ export interface PortCall {
   departure_time: string | null;
   berth_code: string | null;
   day_of_week: string;
+  last_modified: string | null;
+  previous_values: {
+    arrival_time: string | null;
+    departure_time: string | null;
+    berth_code: string | null;
+  } | null;
 }
 
 export interface ScheduleResponse {
