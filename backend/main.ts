@@ -483,20 +483,23 @@ router.post("/api/import", async (ctx) => {
 
   if (!Array.isArray(records)) return jsonErr(ctx, 400, "Expected { records: [...] }");
 
-  let inserted = 0, skipped = 0;
+  let inserted = 0, updated = 0, unchanged = 0;
   db.execute("BEGIN TRANSACTION");
   try {
     for (const r of records) {
       db.query("INSERT OR IGNORE INTO ports (code, name) VALUES (?, ?)", [r.port_code, r.port_name]);
       db.query("INSERT OR IGNORE INTO ships (name, first_seen_year) VALUES (?, ?)", [r.ship_name, r.year]);
 
-      const exists = db.query<[number]>(
-        `SELECT COUNT(*) FROM port_calls
-         WHERE year=? AND port_code=? AND ship_name=? AND date_iso=? AND arrival_time=?`,
-        [r.year, r.port_code, r.ship_name, r.date_iso, r.arrival_time ?? ""]
-      )[0][0];
+      // Identity: a ship can only have one call at a port on a given day
+      // If the record exists, update mutable fields (times, berth) in case CLA revised the PDF
+      const existing = db.query<[number, string | null, string | null, string | null]>(
+        `SELECT id, arrival_time, departure_time, berth_code
+         FROM port_calls
+         WHERE year=? AND port_code=? AND ship_name=? AND date_iso=?`,
+        [r.year, r.port_code, r.ship_name, r.date_iso]
+      )[0];
 
-      if (exists === 0) {
+      if (!existing) {
         db.query(
           `INSERT INTO port_calls (year,port_code,port_name,ship_name,date_str,date_iso,
                                    arrival_time,departure_time,berth_code,day_of_week)
@@ -505,10 +508,29 @@ router.post("/api/import", async (ctx) => {
            r.arrival_time,r.departure_time,r.berth_code,r.day_of_week]
         );
         inserted++;
-      } else { skipped++; }
+      } else {
+        const [id, oldArrival, oldDeparture, oldBerth] = existing;
+        const changed =
+          (r.arrival_time   ?? null) !== oldArrival   ||
+          (r.departure_time ?? null) !== oldDeparture ||
+          (r.berth_code     ?? null) !== oldBerth;
+
+        if (changed) {
+          db.query(
+            `UPDATE port_calls
+             SET arrival_time=?, departure_time=?, berth_code=?, date_str=?
+             WHERE id=?`,
+            [r.arrival_time ?? null, r.departure_time ?? null,
+             r.berth_code ?? null, r.date_str, id]
+          );
+          updated++;
+        } else {
+          unchanged++;
+        }
+      }
     }
     db.execute("COMMIT");
-    jsonOk(ctx, { success: true, inserted, skipped });
+    jsonOk(ctx, { success: true, inserted, updated, unchanged });
   } catch (e) {
     db.execute("ROLLBACK");
     jsonErr(ctx, 500, String(e));

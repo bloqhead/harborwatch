@@ -510,7 +510,7 @@ async function scrapeYear(year, apiBase, portFilter, apiKey) {
   if (allRecords.length) {
     process.stdout.write(`📤 Importing to API... `);
     const r = await importRecords(apiBase, allRecords, apiKey);
-    console.log(`inserted: ${r.inserted}, dupes skipped: ${r.skipped}`);
+    console.log(`inserted: ${r.inserted}, updated: ${r.updated ?? 0}, unchanged: ${r.unchanged ?? 0}`);
   }
 }
 
